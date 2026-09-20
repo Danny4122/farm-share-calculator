@@ -294,7 +294,7 @@ export default function ResultsScreen() {
                     {/* New Calculation */}
                     <Pressable
                         style={styles.newButton}
-                        onPress={() => router.replace('/individual')}
+                        onPress={() => router.replace('/')}
                     >
                         <Text style={styles.newButtonText}>
                             New Calculation
