@@ -2,6 +2,7 @@ import AsyncStorage from '@react-native-async-storage/async-storage';
 
 export type SavedCalculation = {
     id: string;
+    name: string;
     createdAt: string;
     saved: boolean;
     workers: {
@@ -33,6 +34,14 @@ export const saveCalculation = async (
             : [];
 
         history.push(calculation);
+
+        // // For testing purposes, we can simulate a calculation that was created 2 days ago.
+        // history.push({
+        //     ...calculation,
+        //     createdAt: new Date(
+        //         Date.now() - 2 * 24 * 60 * 60 * 1000
+        //     ).toISOString(),
+        // });
 
         await AsyncStorage.setItem(
             HISTORY_KEY,
@@ -144,5 +153,51 @@ export const setRetentionPeriod = async (
     } catch (error) {
         console.error('Failed to save settings:', error);
         throw error;
+    }
+};
+
+export const cleanupOldHistory = async (): Promise<void> => {
+    try {
+        const retentionPeriod = await getRetentionPeriod();
+
+        // "Never" means do not delete anything.
+        if (retentionPeriod === null) {
+            return;
+        }
+
+        const existingData = await AsyncStorage.getItem(HISTORY_KEY);
+
+        if (!existingData) {
+            return;
+        }
+
+        const history: SavedCalculation[] = JSON.parse(existingData);
+
+        const now = Date.now();
+
+        const updatedHistory = history.filter((calculation) => {
+            // Saved calculations are never automatically deleted.
+            if (calculation.saved) {
+                return true;
+            }
+
+            const createdTime = new Date(calculation.createdAt).getTime();
+            const ageInDays =
+                (now - createdTime) / (1000 * 60 * 60 * 24);
+
+            // Keep Not Saved calculations that are still within
+            // the selected retention period.
+            return ageInDays < retentionPeriod;
+        });
+
+        await AsyncStorage.setItem(
+            HISTORY_KEY,
+            JSON.stringify(updatedHistory)
+        );
+    } catch (error) {
+        console.error(
+            'Failed to clean up old history:',
+            error
+        );
     }
 };

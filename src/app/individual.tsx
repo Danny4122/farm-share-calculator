@@ -45,6 +45,8 @@ export default function IndividualScreen() {
         const newId = Date.now();
 
         setMananomayList((currentList) => [
+            ...currentList,
+
             {
                 id: newId,
                 name: '',
@@ -52,7 +54,6 @@ export default function IndividualScreen() {
                 sacks: '',
                 taro: '',
             },
-            ...currentList,
         ]);
 
         setTimeout(() => {
@@ -189,7 +190,21 @@ export default function IndividualScreen() {
                 );
                 return false;
             }
+
+            const harvestTaro = sacks * 4 + taro;
+            const requiredKahonShare = kahon * 2;
+            const requiredMinimumHarvest = requiredKahonShare + 1;
+
+            if (harvestTaro < requiredMinimumHarvest) {
+                showMessage(
+                    'Invalid Harvest',
+                    `${person.name || `Mananomay ${i + 1}`} has ${kahon} kahon, which requires at least ${requiredMinimumHarvest} taro of harvest. Please enter a larger harvest.`
+                );
+                return false;
+            }
         }
+
+
 
         // showMessage(
         //     'Validation Successful',
@@ -248,10 +263,10 @@ export default function IndividualScreen() {
                         Calculate each mananomay's share based on their harvest.
                     </Text>
 
-                    {/* Mananomay list */}
+                    {/* Mananomay list
                     <Text style={styles.sectionTitle}>
                         Mananomay
-                    </Text>
+                    </Text> */}
 
                     {mananomayList.map((person, index) => (
                         <View key={person.id} style={styles.personCard}>

@@ -5,12 +5,14 @@ import {
     ScrollView,
     StyleSheet,
     Text,
+    TextInput,
     View,
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatTaro } from '../utils/farmCalculator';
 import {
-    saveCalculation, updateCalculation
+    getHistory,
+    saveCalculation, updateCalculation,
 } from '../utils/storage';
 
 type MananomayResult = {
@@ -31,9 +33,19 @@ export default function ResultsScreen() {
 
     const isAlreadySaved = params.saved === 'true';
 
+    const [hasBeenSaved, setHasBeenSaved] = useState(
+        isAlreadySaved
+    );
+
     const calculationId = useRef(Date.now().toString()).current;
 
     const [expandedPerson, setExpandedPerson] = useState<string | null>(null);
+
+    const [isTotalMananomayExpanded, setIsTotalMananomayExpanded] =
+        useState(false);
+
+    const [calculationName, setCalculationName] = useState('');
+    const [showNameInput, setShowNameInput] = useState(false);
 
     let results: MananomayResult[] = [];
 
@@ -87,11 +99,11 @@ export default function ResultsScreen() {
             try {
                 await saveCalculation({
                     id: calculationId,
+                    name: '',
                     createdAt: new Date().toISOString(),
                     saved: false,
                     workers: results,
                 });
-
                 console.log('Temporary calculation saved.');
             } catch (error) {
                 console.error(
@@ -105,18 +117,37 @@ export default function ResultsScreen() {
     }, [isHistoryView]);
 
     const handleSave = async () => {
+        const trimmedName = calculationName.trim();
+
+        if (!trimmedName) {
+            alert('Please enter a name for this calculation.');
+            return;
+        }
+
         try {
             const idToUpdate =
                 typeof params.historyId === 'string'
                     ? params.historyId
                     : calculationId;
 
+            const existingHistory = await getHistory();
+
+            const existingCalculation = existingHistory.find(
+                (calculation) => calculation.id === idToUpdate
+            );
+
             await updateCalculation({
                 id: idToUpdate,
-                createdAt: new Date().toISOString(),
+                name: trimmedName,
+                createdAt:
+                    existingCalculation?.createdAt ??
+                    new Date().toISOString(),
                 saved: true,
                 workers: results,
             });
+
+            setShowNameInput(false);
+            setHasBeenSaved(true);
 
             alert('Calculation saved to History!');
         } catch (error) {
@@ -288,13 +319,13 @@ export default function ResultsScreen() {
                             </View>
                         );
                     })}
-
                     {/* Complete Total */}
                     <View style={styles.totalCard}>
                         <Text style={styles.totalTitle}>
                             Complete Total
                         </Text>
 
+                        {/* Total Gross Harvest */}
                         <View style={styles.resultRow}>
                             <Text style={styles.resultLabel}>
                                 Total Gross Harvest
@@ -305,6 +336,7 @@ export default function ResultsScreen() {
                             </Text>
                         </View>
 
+                        {/* Total Harvester */}
                         <View style={styles.resultRow}>
                             <Text style={styles.resultLabel}>
                                 Total Harvester
@@ -316,16 +348,56 @@ export default function ResultsScreen() {
                         </View>
 
                         {/* Total Mananomay Share */}
-                        <View style={styles.resultRow}>
-                            <Text style={styles.resultLabel}>
-                                Total Mananomay Share
-                            </Text>
+                        <Pressable
+                            style={styles.shareButton}
+                            onPress={() =>
+                                setIsTotalMananomayExpanded(
+                                    !isTotalMananomayExpanded
+                                )
+                            }
+                        >
+                            <View style={styles.shareTextContainer}>
+                                <Text style={styles.shareLabel}>
+                                    Total Mananomay Share
+                                </Text>
 
-                            <Text style={styles.resultValue}>
-                                {formatTaro(totalMananomayShare)}
-                            </Text>
-                        </View>
+                                <Text style={styles.shareValue}>
+                                    {formatTaro(totalMananomayShare)}
+                                </Text>
+                            </View>
 
+                            <Text style={styles.arrow}>
+                                {isTotalMananomayExpanded ? '▲' : '▼'}
+                            </Text>
+                        </Pressable>
+
+                        {/* Individual Mananomay Shares */}
+                        {isTotalMananomayExpanded && (
+                            <View style={styles.breakdown}>
+                                {results.map((person, index) => {
+                                    const mananomayShare =
+                                        person.fixedKahonShare +
+                                        person.harvestShare;
+
+                                    return (
+                                        <View
+                                            key={`total-${person.name}-${index}`}
+                                            style={styles.breakdownRow}
+                                        >
+                                            <Text style={styles.breakdownLabel}>
+                                                {person.name}'s Share
+                                            </Text>
+
+                                            <Text style={styles.breakdownValue}>
+                                                {formatTaro(mananomayShare)}
+                                            </Text>
+                                        </View>
+                                    );
+                                })}
+                            </View>
+                        )}
+
+                        {/* Total Owner */}
                         <View style={styles.resultRow}>
                             <Text style={styles.resultLabel}>
                                 Total Owner
@@ -336,6 +408,7 @@ export default function ResultsScreen() {
                             </Text>
                         </View>
 
+                        {/* Total Tenant */}
                         <View style={styles.tenantTotalRow}>
                             <Text style={styles.tenantLabel}>
                                 Total Tenant
@@ -348,15 +421,58 @@ export default function ResultsScreen() {
                     </View>
 
                     {/* Save to History */}
-                    {!isAlreadySaved && (
+                    {!hasBeenSaved && !showNameInput && (
                         <Pressable
                             style={styles.saveButton}
-                            onPress={handleSave}
+                            onPress={() => setShowNameInput(true)}
                         >
                             <Text style={styles.saveButtonText}>
                                 💾 Save to History
                             </Text>
                         </Pressable>
+                    )}
+
+                    {!hasBeenSaved && showNameInput && (
+                        <View style={styles.nameInputContainer}>
+                            <Text style={styles.nameInputLabel}>
+                                Calculation Name
+                            </Text>
+
+                            <Text style={styles.nameInputDescription}>
+                                Give this calculation a name so you can easily find it later.
+                            </Text>
+
+                            <TextInput
+                                style={styles.nameInput}
+                                placeholder="e.g. September Harvest"
+                                value={calculationName}
+                                onChangeText={setCalculationName}
+                                autoFocus
+                            />
+
+                            <View style={styles.nameInputButtons}>
+                                <Pressable
+                                    style={styles.cancelNameButton}
+                                    onPress={() => {
+                                        setCalculationName('');
+                                        setShowNameInput(false);
+                                    }}
+                                >
+                                    <Text style={styles.cancelNameButtonText}>
+                                        Cancel
+                                    </Text>
+                                </Pressable>
+
+                                <Pressable
+                                    style={styles.confirmSaveButton}
+                                    onPress={handleSave}
+                                >
+                                    <Text style={styles.confirmSaveButtonText}>
+                                        💾 Save
+                                    </Text>
+                                </Pressable>
+                            </View>
+                        </View>
                     )}
 
                     {/* New Calculation */}
@@ -550,11 +666,14 @@ const styles = StyleSheet.create({
     tenantLabel: {
         fontSize: 16,
         fontWeight: '700',
+        color: '#008000',
     },
 
     tenantValue: {
         fontSize: 17,
         fontWeight: '700',
+        color: '#008000',
+
     },
 
     totalCard: {
@@ -606,5 +725,69 @@ const styles = StyleSheet.create({
         color: '#FFFFFF',
         fontSize: 17,
         fontWeight: 'bold',
+    },
+    nameInputContainer: {
+        backgroundColor: '#FFFFFF',
+        borderRadius: 16,
+        padding: 18,
+        marginBottom: 12,
+        borderWidth: 1,
+        borderColor: '#DDDDDD',
+    },
+
+    nameInputLabel: {
+        fontSize: 18,
+        fontWeight: '700',
+        marginBottom: 6,
+    },
+
+    nameInputDescription: {
+        fontSize: 14,
+        color: '#666666',
+        marginBottom: 12,
+    },
+
+    nameInput: {
+        borderWidth: 1,
+        borderColor: '#CCCCCC',
+        borderRadius: 10,
+        paddingHorizontal: 14,
+        paddingVertical: 12,
+        fontSize: 16,
+        backgroundColor: '#FAFAFA',
+    },
+
+    nameInputButtons: {
+        flexDirection: 'row',
+        gap: 10,
+        marginTop: 14,
+    },
+
+    cancelNameButton: {
+        flex: 1,
+        backgroundColor: '#EEEEEE',
+        borderRadius: 10,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+
+    cancelNameButtonText: {
+        fontSize: 16,
+        fontWeight: '600',
+        color: '#444444',
+    },
+
+    confirmSaveButton: {
+        flex: 1,
+        backgroundColor: '#2F6B3F',
+        borderRadius: 10,
+        paddingVertical: 14,
+        alignItems: 'center',
+    },
+
+    confirmSaveButtonText: {
+        fontSize: 16,
+        fontWeight: '700',
+        color: '#FFFFFF',
     },
 });
