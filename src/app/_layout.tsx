@@ -13,7 +13,7 @@ export default function RootLayout() {
             <Stack.Screen
                 name="individual"
                 options={{
-                    title: 'Individual Calculation',
+                    title: 'Farm Share Calculator',
                 }}
             />
 

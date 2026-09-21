@@ -1,5 +1,5 @@
 import { router, useLocalSearchParams } from 'expo-router';
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import {
     Pressable,
     ScrollView,
@@ -9,6 +9,9 @@ import {
 } from 'react-native';
 import { SafeAreaView } from 'react-native-safe-area-context';
 import { formatTaro } from '../utils/farmCalculator';
+import {
+    saveCalculation, updateCalculation
+} from '../utils/storage';
 
 type MananomayResult = {
     name: string;
@@ -23,6 +26,12 @@ type MananomayResult = {
 
 export default function ResultsScreen() {
     const params = useLocalSearchParams();
+
+    const isHistoryView = typeof params.historyId === 'string';
+
+    const isAlreadySaved = params.saved === 'true';
+
+    const calculationId = useRef(Date.now().toString()).current;
 
     const [expandedPerson, setExpandedPerson] = useState<string | null>(null);
 
@@ -68,6 +77,53 @@ export default function ResultsScreen() {
 
     const totalMananomayShare =
         totalKahon + totalHarvestShare;
+
+    useEffect(() => {
+        if (isHistoryView) {
+            return;
+        }
+
+        const saveTemporaryCalculation = async () => {
+            try {
+                await saveCalculation({
+                    id: calculationId,
+                    createdAt: new Date().toISOString(),
+                    saved: false,
+                    workers: results,
+                });
+
+                console.log('Temporary calculation saved.');
+            } catch (error) {
+                console.error(
+                    'Failed to save temporary calculation:',
+                    error
+                );
+            }
+        };
+
+        saveTemporaryCalculation();
+    }, [isHistoryView]);
+
+    const handleSave = async () => {
+        try {
+            const idToUpdate =
+                typeof params.historyId === 'string'
+                    ? params.historyId
+                    : calculationId;
+
+            await updateCalculation({
+                id: idToUpdate,
+                createdAt: new Date().toISOString(),
+                saved: true,
+                workers: results,
+            });
+
+            alert('Calculation saved to History!');
+        } catch (error) {
+            console.error('Failed to save calculation:', error);
+            alert('Failed to save calculation.');
+        }
+    };
 
     return (
         <SafeAreaView style={styles.container}>
@@ -291,15 +347,29 @@ export default function ResultsScreen() {
                         </View>
                     </View>
 
+                    {/* Save to History */}
+                    {!isAlreadySaved && (
+                        <Pressable
+                            style={styles.saveButton}
+                            onPress={handleSave}
+                        >
+                            <Text style={styles.saveButtonText}>
+                                💾 Save to History
+                            </Text>
+                        </Pressable>
+                    )}
+
                     {/* New Calculation */}
-                    <Pressable
-                        style={styles.newButton}
-                        onPress={() => router.replace('/')}
-                    >
-                        <Text style={styles.newButtonText}>
-                            New Calculation
-                        </Text>
-                    </Pressable>
+                    {!isHistoryView && (
+                        <Pressable
+                            style={styles.newButton}
+                            onPress={() => router.replace('/')}
+                        >
+                            <Text style={styles.newButtonText}>
+                                New Calculation
+                            </Text>
+                        </Pressable>
+                    )}
 
                 </View>
             </ScrollView>
@@ -509,6 +579,20 @@ const styles = StyleSheet.create({
         alignItems: 'center',
         marginTop: 8,
         paddingTop: 14,
+    },
+
+    saveButton: {
+        backgroundColor: '#E8F0E5',
+        borderRadius: 12,
+        paddingVertical: 16,
+        alignItems: 'center',
+        marginBottom: 12,
+    },
+
+    saveButtonText: {
+        color: '#2F6B3F',
+        fontSize: 17,
+        fontWeight: 'bold',
     },
 
     newButton: {

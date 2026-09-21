@@ -45,7 +45,6 @@ export default function IndividualScreen() {
         const newId = Date.now();
 
         setMananomayList((currentList) => [
-            ...currentList,
             {
                 id: newId,
                 name: '',
@@ -53,6 +52,7 @@ export default function IndividualScreen() {
                 sacks: '',
                 taro: '',
             },
+            ...currentList,
         ]);
 
         setTimeout(() => {
@@ -241,11 +241,11 @@ export default function IndividualScreen() {
                     <Text style={styles.icon}>👥</Text>
 
                     <Text style={styles.title}>
-                        Individual Calculation
+                        Farm Share Calculator
                     </Text>
 
                     <Text style={styles.subtitle}>
-                        Calculate each mananomay separately
+                        Calculate each mananomay's share based on their harvest.
                     </Text>
 
                     {/* Mananomay list */}
