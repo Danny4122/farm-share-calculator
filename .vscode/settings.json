@@ -3,5 +3,35 @@
     "source.fixAll": "explicit",
     "source.organizeImports": "explicit",
     "source.sortMembers": "explicit"
+  },
+  "[css]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[scss]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[less]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[html]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[json]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[jsonc]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[javascript]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[typescript]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+  },
+  "[typescriptreact]": {
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
+  },
+  "[javascriptreact]": {
+    "editor.defaultFormatter": "ced-lab.tidy-formatter"
   }
 }

@@ -33,15 +33,15 @@ export const saveCalculation = async (
             ? JSON.parse(existingData)
             : [];
 
-        history.push(calculation);
+        const alreadyExists = history.some(
+            (item) => item.id === calculation.id
+        );
 
-        // // For testing purposes, we can simulate a calculation that was created 2 days ago.
-        // history.push({
-        //     ...calculation,
-        //     createdAt: new Date(
-        //         Date.now() - 2 * 24 * 60 * 60 * 1000
-        //     ).toISOString(),
-        // });
+        if (alreadyExists) {
+            return;
+        }
+
+        history.push(calculation);
 
         await AsyncStorage.setItem(
             HISTORY_KEY,
