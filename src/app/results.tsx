@@ -1,8 +1,10 @@
+import { MaterialCommunityIcons } from "@expo/vector-icons";
 import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
   Animated,
+  KeyboardAvoidingView,
   Platform,
   Pressable,
   ScrollView,
@@ -30,6 +32,69 @@ type MananomayResult = {
   tenantShare: number;
 };
 
+const AnimatedActionButton = ({
+  children,
+  onPress,
+  style,
+}: {
+  children: React.ReactNode;
+  onPress: () => void;
+  style?: any;
+}) => {
+  const scale = useRef(new Animated.Value(1)).current;
+  const opacity = useRef(new Animated.Value(1)).current;
+
+  const handlePressIn = () => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 0.96,
+        useNativeDriver: true,
+        speed: 30,
+        bounciness: 4,
+      }),
+      Animated.timing(opacity, {
+        toValue: 0.85,
+        duration: 100,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  const handlePressOut = () => {
+    Animated.parallel([
+      Animated.spring(scale, {
+        toValue: 1,
+        useNativeDriver: true,
+        speed: 25,
+        bounciness: 6,
+      }),
+      Animated.timing(opacity, {
+        toValue: 1,
+        duration: 120,
+        useNativeDriver: true,
+      }),
+    ]).start();
+  };
+
+  return (
+    <Animated.View
+      style={{
+        transform: [{ scale }],
+        opacity,
+      }}
+    >
+      <Pressable
+        style={style}
+        onPress={onPress}
+        onPressIn={handlePressIn}
+        onPressOut={handlePressOut}
+      >
+        {children}
+      </Pressable>
+    </Animated.View>
+  );
+};
+
 export default function ResultsScreen() {
   const params = useLocalSearchParams();
 
@@ -43,10 +108,19 @@ export default function ResultsScreen() {
 
   const [expandedPerson, setExpandedPerson] = useState<string | null>(null);
 
+  //Header Card Animation
   const headerFade = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-20)).current;
+
+  //Worker Card Animation
   const cardFade = useRef(new Animated.Value(0)).current;
   const cardSlide = useRef(new Animated.Value(20)).current;
+
+  //Total Card Animation
+  const totalFade = useRef(new Animated.Value(0)).current;
+  const totalSlide = useRef(new Animated.Value(25)).current;
+
+  const scrollViewRef = useRef<ScrollView>(null);
 
   const [focusedNameInput, setFocusedNameInput] = useState(false);
 
@@ -71,33 +145,54 @@ export default function ResultsScreen() {
 
   // Animate the Results screen when it opens
   useEffect(() => {
+    const useNative = Platform.OS !== "web";
+
+    // Header animation
     Animated.parallel([
       Animated.timing(headerFade, {
         toValue: 1,
         duration: 600,
-        useNativeDriver: Platform.OS !== "web",
+        useNativeDriver: useNative,
       }),
       Animated.spring(headerSlide, {
         toValue: 0,
         friction: 8,
         tension: 50,
-        useNativeDriver: Platform.OS !== "web",
+        useNativeDriver: useNative,
       }),
     ]).start();
 
+    // Worker cards animation
     Animated.parallel([
       Animated.timing(cardFade, {
         toValue: 1,
         duration: 700,
         delay: 180,
-        useNativeDriver: Platform.OS !== "web",
+        useNativeDriver: useNative,
       }),
       Animated.spring(cardSlide, {
         toValue: 0,
         friction: 8,
         tension: 45,
         delay: 180,
-        useNativeDriver: Platform.OS !== "web",
+        useNativeDriver: useNative,
+      }),
+    ]).start();
+
+    // Complete Total animation
+    Animated.parallel([
+      Animated.timing(totalFade, {
+        toValue: 1,
+        duration: 600,
+        delay: 500,
+        useNativeDriver: useNative,
+      }),
+      Animated.spring(totalSlide, {
+        toValue: 0,
+        friction: 8,
+        tension: 45,
+        delay: 500,
+        useNativeDriver: useNative,
       }),
     ]).start();
   }, []);
@@ -675,313 +770,429 @@ export default function ResultsScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView contentContainerStyle={styles.scrollContent}>
-        <View style={styles.content}>
-          {/* Header */}
-          <Animated.View
-            style={[
-              styles.header,
-              {
-                opacity: headerFade,
-                transform: [{ translateY: headerSlide }],
-              },
-            ]}
-          >
-            <View style={styles.headerIcon}>
-              <Text style={styles.headerIconText}>🌾</Text>
-            </View>
+      <KeyboardAvoidingView
+        style={{ flex: 1 }}
+        behavior={Platform.OS === "ios" ? "padding" : "height"}
+      >
+        <ScrollView
+          ref={scrollViewRef}
+          contentContainerStyle={styles.scrollContent}
+          keyboardShouldPersistTaps="handled"
+        >
+          <View style={styles.content}>
+            <Pressable
+              style={styles.backButton}
+              onPress={() => {
+                if (isHistoryView) {
+                  router.replace("/history");
+                } else {
+                  router.replace("/");
+                }
+              }}
+            >
+              <Text style={styles.backButtonText}>← Back</Text>
+            </Pressable>
 
-            {isHistoryView ? (
-              <Text style={styles.title}>
-                {calculationName.trim() || "Unnamed Calculation"}
+            {/* Header */}
+            <Animated.View
+              style={[
+                styles.header,
+                {
+                  opacity: headerFade,
+                  transform: [{ translateY: headerSlide }],
+                },
+              ]}
+            >
+              <View style={styles.headerIcon}>
+                <Text style={styles.headerIconText}>🌾</Text>
+              </View>
+
+              {isHistoryView ? (
+                <Text style={styles.title}>
+                  {calculationName.trim() || "Unnamed Calculation"}
+                </Text>
+              ) : (
+                <Text style={styles.title}>Farm Share Results</Text>
+              )}
+
+              <Text style={styles.subtitle}>
+                Individual calculation for each mananomay
               </Text>
-            ) : (
-              <Text style={styles.title}>Farm Share Results</Text>
-            )}
 
-            <Text style={styles.subtitle}>
-              Individual calculation for each mananomay
-            </Text>
+              <View style={styles.unitBadge}>
+                <Text style={styles.unitBadgeText}>1 sack = 4 taro</Text>
+              </View>
+            </Animated.View>
 
-            <View style={styles.unitBadge}>
-              <Text style={styles.unitBadgeText}>1 sack = 4 taro</Text>
-            </View>
-          </Animated.View>
+            {/* Individual Results */}
+            {results.map((person, index) => {
+              const mananomayShare =
+                person.fixedKahonShare + person.harvestShare;
 
-          {/* Individual Results */}
-          {results.map((person, index) => {
-            const mananomayShare = person.fixedKahonShare + person.harvestShare;
+              const personKey = `${person.name}-${index}`;
 
-            const personKey = `${person.name}-${index}`;
+              const isExpanded = expandedPerson === personKey;
 
-            const isExpanded = expandedPerson === personKey;
+              return (
+                <Animated.View
+                  key={personKey}
+                  style={[
+                    styles.personCard,
+                    {
+                      opacity: cardFade,
+                      transform: [{ translateY: cardSlide }],
+                    },
+                  ]}
+                >
+                  {/* Person name */}
+                  <View style={styles.personHeader}>
+                    <View style={styles.personNameRow}>
+                      <View style={styles.personIcon}>
+                        <Text style={styles.personIconText}>👤</Text>
+                      </View>
 
-            return (
-              <Animated.View
-                key={personKey}
-                style={[
-                  styles.personCard,
-                  {
-                    opacity: cardFade,
-                    transform: [{ translateY: cardSlide }],
-                  },
-                ]}
-              >
-                {/* Person name */}
-                <View style={styles.personHeader}>
-                  <View style={styles.personNameRow}>
-                    <View style={styles.personIcon}>
-                      <Text style={styles.personIconText}>👤</Text>
-                    </View>
+                      <View>
+                        <Text style={styles.personTitle}>{person.name}</Text>
 
-                    <View>
-                      <Text style={styles.personTitle}>{person.name}</Text>
-
-                      <Text style={styles.kahonText}>{person.kahon} kahon</Text>
+                        <Text style={styles.kahonText}>
+                          {person.kahon} kahon
+                        </Text>
+                      </View>
                     </View>
                   </View>
-                </View>
-                {/* Gross Harvest */}
-                <View style={styles.resultRow}>
-                  <Text style={styles.resultLabel}>Gross Harvest</Text>
+                  {/* Gross Harvest */}
+                  <View style={styles.resultRow}>
+                    <Text style={styles.resultLabel}>Gross Harvest</Text>
 
-                  <Text style={styles.resultValue}>
-                    {formatTaro(person.harvestTaro)}
-                  </Text>
-                </View>
-                {/* Harvester */}
-                <View style={styles.resultRow}>
-                  <Text style={styles.resultLabel}>Harvester</Text>
+                    <Text style={styles.resultValue}>
+                      {formatTaro(person.harvestTaro)}
+                    </Text>
+                  </View>
+                  {/* Harvester */}
+                  <View style={styles.resultRow}>
+                    <Text style={styles.resultLabel}>Harvester</Text>
 
-                  <Text style={styles.resultValue}>
-                    {formatTaro(person.harvesterShare)}
-                  </Text>
-                </View>
-                {/* Expandable Mananomay Share */}
-                <View style={styles.shareBox}>
-                  <Pressable
-                    style={styles.shareButton}
-                    onPress={() =>
-                      setExpandedPerson(isExpanded ? null : personKey)
-                    }
-                  >
-                    <View style={styles.shareTextContainer}>
-                      <View>
-                        <Text style={styles.shareLabel}>
-                          {person.name}'s Share
-                        </Text>
+                    <Text style={styles.resultValue}>
+                      {formatTaro(person.harvesterShare)}
+                    </Text>
+                  </View>
+                  {/* Expandable Mananomay Share */}
+                  <View style={styles.shareBox}>
+                    <Pressable
+                      style={styles.shareButton}
+                      onPress={() =>
+                        setExpandedPerson(isExpanded ? null : personKey)
+                      }
+                    >
+                      <View style={styles.shareTextContainer}>
+                        <View>
+                          <Text style={styles.shareLabel}>
+                            {person.name}'s Share
+                          </Text>
 
-                        <Text style={styles.shareDescription}>
-                          Kahon + harvest share
-                        </Text>
+                          <Text style={styles.shareDescription}>
+                            Kahon + harvest share
+                          </Text>
+                        </View>
+
+                        <View style={styles.shareRight}>
+                          <Text style={styles.shareValue}>
+                            {formatTaro(mananomayShare)}
+                          </Text>
+
+                          <Text style={styles.arrow}>
+                            {isExpanded ? "▲" : "▼"}
+                          </Text>
+                        </View>
                       </View>
+                    </Pressable>
 
-                      <View style={styles.shareRight}>
-                        <Text style={styles.shareValue}>
-                          {formatTaro(mananomayShare)}
-                        </Text>
+                    {isExpanded && (
+                      <View style={styles.breakdown}>
+                        <View style={styles.breakdownRow}>
+                          <Text style={styles.breakdownLabel}>Kahon Share</Text>
 
-                        <Text style={styles.arrow}>
-                          {isExpanded ? "▲" : "▼"}
-                        </Text>
+                          <Text style={styles.breakdownValue}>
+                            {formatTaro(person.fixedKahonShare)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.breakdownRow}>
+                          <Text style={styles.breakdownLabel}>
+                            Harvest Share
+                          </Text>
+
+                          <Text style={styles.breakdownValue}>
+                            {formatTaro(person.harvestShare)}
+                          </Text>
+                        </View>
+
+                        <View style={styles.breakdownTotal}>
+                          <Text style={styles.breakdownTotalLabel}>Total</Text>
+
+                          <Text style={styles.breakdownTotalValue}>
+                            {formatTaro(mananomayShare)}
+                          </Text>
+                        </View>
                       </View>
+                    )}
+                  </View>
+                  {/* Owner */}
+                  <View style={styles.resultRow}>
+                    <Text style={styles.resultLabel}>Owner Share</Text>
+
+                    <Text style={styles.resultValue}>
+                      {formatTaro(person.ownerShare)}
+                    </Text>
+                  </View>
+                  {/* Tenant */}
+                  <View style={styles.tenantResultBox}>
+                    <View>
+                      <Text style={styles.tenantResultLabel}>Tenant Share</Text>
+                      <Text style={styles.tenantResultDescription}>
+                        Remaining share
+                      </Text>
                     </View>
-                  </Pressable>
 
-                  {isExpanded && (
-                    <View style={styles.breakdown}>
-                      <View style={styles.breakdownRow}>
-                        <Text style={styles.breakdownLabel}>Kahon Share</Text>
+                    <View style={styles.tenantResultRight}>
+                      <Text style={styles.tenantResultValue}>
+                        {formatTaro(person.tenantShare)}
+                      </Text>
 
-                        <Text style={styles.breakdownValue}>
-                          {formatTaro(person.fixedKahonShare)}
-                        </Text>
-                      </View>
-
-                      <View style={styles.breakdownRow}>
-                        <Text style={styles.breakdownLabel}>Harvest Share</Text>
-
-                        <Text style={styles.breakdownValue}>
-                          {formatTaro(person.harvestShare)}
-                        </Text>
-                      </View>
-
-                      <View style={styles.breakdownTotal}>
-                        <Text style={styles.breakdownTotalLabel}>Total</Text>
-
-                        <Text style={styles.breakdownTotalValue}>
-                          {formatTaro(mananomayShare)}
-                        </Text>
-                      </View>
+                      <Text style={styles.tenantTaroValue}>
+                        {person.tenantShare} taro
+                      </Text>
                     </View>
-                  )}
-                </View>
-                {/* Owner */}
-                <View style={styles.resultRow}>
-                  <Text style={styles.resultLabel}>Owner Share</Text>
+                  </View>
+                </Animated.View>
+              );
+            })}
 
-                  <Text style={styles.resultValue}>
-                    {formatTaro(person.ownerShare)}
-                  </Text>
-                </View>
-                {/* Tenant */}
-                <View style={styles.tenantRow}>
-                  <Text style={styles.tenantLabel}>Tenant Share</Text>
-
-                  <Text style={styles.tenantValue}>
-                    {formatTaro(person.tenantShare)}
-                  </Text>
-                </View>
-              </Animated.View>
-            );
-          })}
-          {/* Complete Total */}
-          <View style={styles.totalCard}>
-            <Text style={styles.totalTitle}>Complete Total</Text>
-
-            {/* Total Gross Harvest */}
-            <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>Total Gross Harvest</Text>
-
-              <Text style={styles.resultValue}>{formatTaro(totalGross)}</Text>
-            </View>
-
-            {/* Total Harvester */}
-            <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>Total Harvester</Text>
-
-              <Text style={styles.resultValue}>
-                {formatTaro(totalHarvester)}
-              </Text>
-            </View>
-
-            {/* Total Mananomay Share */}
-            <Pressable
-              style={styles.shareButton}
-              onPress={() =>
-                setIsTotalMananomayExpanded(!isTotalMananomayExpanded)
-              }
+            {/* Complete Total */}
+            <Animated.View
+              style={[
+                styles.totalCard,
+                {
+                  opacity: totalFade,
+                  transform: [{ translateY: totalSlide }],
+                },
+              ]}
             >
-              <View style={styles.shareTextContainer}>
-                <Text style={styles.shareLabel}>Total Mananomay Share</Text>
+              <Text style={styles.totalTitle}>Complete Total</Text>
 
-                <Text style={styles.shareValue}>
-                  {formatTaro(totalMananomayShare)}
+              {/* Total Gross Harvest */}
+              <View style={styles.resultRow}>
+                <Text style={styles.resultLabel}>Total Gross Harvest</Text>
+
+                <Text style={styles.resultValue}>{formatTaro(totalGross)}</Text>
+              </View>
+
+              {/* Total Harvester */}
+              <View style={styles.resultRow}>
+                <Text style={styles.resultLabel}>Total Harvester</Text>
+
+                <Text style={styles.resultValue}>
+                  {formatTaro(totalHarvester)}
                 </Text>
               </View>
 
-              <Text style={styles.arrow}>
-                {isTotalMananomayExpanded ? "▲" : "▼"}
-              </Text>
-            </Pressable>
-
-            {/* Individual Mananomay Shares */}
-            {isTotalMananomayExpanded && (
-              <View style={styles.breakdown}>
-                {results.map((person, index) => {
-                  const mananomayShare =
-                    person.fixedKahonShare + person.harvestShare;
-
-                  return (
-                    <View
-                      key={`total-${person.name}-${index}`}
-                      style={styles.breakdownRow}
-                    >
-                      <Text style={styles.breakdownLabel}>
-                        {person.name}'s Share
+              {/* Total Mananomay Share */}
+              {/* Total Mananomay Share */}
+              <View style={styles.totalShareBox}>
+                <Pressable
+                  style={styles.totalShareButton}
+                  onPress={() =>
+                    setIsTotalMananomayExpanded(!isTotalMananomayExpanded)
+                  }
+                >
+                  <View style={styles.totalShareTextContainer}>
+                    <View>
+                      <Text style={styles.totalShareLabel}>
+                        Total Mananomay Share
                       </Text>
 
-                      <Text style={styles.breakdownValue}>
-                        {formatTaro(mananomayShare)}
+                      <Text style={styles.totalShareDescription}>
+                        Kahon + harvest shares
                       </Text>
                     </View>
-                  );
-                })}
+
+                    <View style={styles.totalShareRight}>
+                      <Text style={styles.totalShareValue}>
+                        {formatTaro(totalMananomayShare)}
+                      </Text>
+
+                      <Text style={styles.totalShareArrow}>
+                        {isTotalMananomayExpanded ? "▲" : "▼"}
+                      </Text>
+                    </View>
+                  </View>
+                </Pressable>
+
+                {/* Individual Mananomay Shares */}
+                {isTotalMananomayExpanded && (
+                  <View style={styles.totalShareBreakdown}>
+                    {results.map((person, index) => {
+                      const mananomayShare =
+                        person.fixedKahonShare + person.harvestShare;
+
+                      return (
+                        <View
+                          key={`total-${person.name}-${index}`}
+                          style={styles.breakdownRow}
+                        >
+                          <Text style={styles.breakdownLabel}>
+                            {person.name}'s Share
+                          </Text>
+
+                          <Text style={styles.breakdownValue}>
+                            {formatTaro(mananomayShare)}
+                          </Text>
+                        </View>
+                      );
+                    })}
+                  </View>
+                )}
+              </View>
+
+              {/* Total Owner */}
+              <View style={styles.resultRow}>
+                <Text style={styles.resultLabel}>Total Owner</Text>
+
+                <Text style={styles.resultValue}>{formatTaro(totalOwner)}</Text>
+              </View>
+
+              {/* Total Tenant */}
+              <View style={styles.totalTenantBox}>
+                <View>
+                  <Text style={styles.totalTenantLabel}>
+                    Total Tenant Share
+                  </Text>
+
+                  <Text style={styles.totalTenantDescription}>
+                    Final remaining share
+                  </Text>
+                </View>
+
+                <View style={styles.totalTenantRight}>
+                  <Text style={styles.totalTenantValue}>
+                    {formatTaro(totalTenant)}
+                  </Text>
+
+                  <Text style={styles.totalTenantTaro}>{totalTenant} taro</Text>
+                </View>
+              </View>
+            </Animated.View>
+
+            {/* Save to History */}
+            {!hasBeenSaved && !showNameInput && (
+              <AnimatedActionButton
+                style={styles.saveButton}
+                onPress={() => setShowNameInput(true)}
+              >
+                <View style={styles.actionButtonContent}>
+                  <MaterialCommunityIcons
+                    name="content-save-outline"
+                    size={21}
+                    color="#2F6B3F"
+                  />
+
+                  <Text style={styles.saveButtonText}>Save to History</Text>
+                </View>
+              </AnimatedActionButton>
+            )}
+            {!hasBeenSaved && showNameInput && (
+              <View style={styles.nameInputContainer}>
+                <Text style={styles.nameInputLabel}>Calculation Name</Text>
+
+                <Text style={styles.nameInputDescription}>
+                  Give this calculation a name so you can easily find it later.
+                </Text>
+
+                <TextInput
+                  style={[
+                    styles.nameInput,
+                    focusedNameInput && styles.nameInputFocused,
+                  ]}
+                  placeholder="e.g. September Harvest"
+                  value={calculationName}
+                  onChangeText={setCalculationName}
+                  onFocus={() => {
+                    setFocusedNameInput(true);
+
+                    setTimeout(() => {
+                      scrollViewRef.current?.scrollToEnd({
+                        animated: true,
+                      });
+                    }, 300);
+                  }}
+                  onBlur={() => setFocusedNameInput(false)}
+                  autoFocus
+                />
+
+                <View style={styles.nameInputButtons}>
+                  <Pressable
+                    style={styles.cancelNameButton}
+                    onPress={() => {
+                      setCalculationName("");
+                      setShowNameInput(false);
+                    }}
+                  >
+                    <Text style={styles.cancelNameButtonText}>Cancel</Text>
+                  </Pressable>
+
+                  <AnimatedActionButton
+                    style={styles.confirmSaveButton}
+                    onPress={handleSave}
+                  >
+                    <View style={styles.actionButtonContent}>
+                      <MaterialCommunityIcons
+                        name="content-save-outline"
+                        size={20}
+                        color="#FFFFFF"
+                      />
+
+                      <Text style={styles.confirmSaveButtonText}>Save</Text>
+                    </View>
+                  </AnimatedActionButton>
+                </View>
               </View>
             )}
 
-            {/* Total Owner */}
-            <View style={styles.resultRow}>
-              <Text style={styles.resultLabel}>Total Owner</Text>
-
-              <Text style={styles.resultValue}>{formatTaro(totalOwner)}</Text>
-            </View>
-
-            {/* Total Tenant */}
-            <View style={styles.tenantTotalRow}>
-              <Text style={styles.tenantLabel}>Total Tenant</Text>
-
-              <Text style={styles.tenantValue}>{formatTaro(totalTenant)}</Text>
-            </View>
-          </View>
-
-          {/* Save to History */}
-          {!hasBeenSaved && !showNameInput && (
-            <Pressable
-              style={styles.saveButton}
-              onPress={() => setShowNameInput(true)}
+            <AnimatedActionButton
+              style={styles.printButton}
+              onPress={handlePrint}
             >
-              <Text style={styles.saveButtonText}>💾 Save to History</Text>
-            </Pressable>
-          )}
+              <View style={styles.actionButtonContent}>
+                <MaterialCommunityIcons
+                  name="printer-outline"
+                  size={21}
+                  color="#2F6B3F"
+                />
 
-          {!hasBeenSaved && showNameInput && (
-            <View style={styles.nameInputContainer}>
-              <Text style={styles.nameInputLabel}>Calculation Name</Text>
-
-              <Text style={styles.nameInputDescription}>
-                Give this calculation a name so you can easily find it later.
-              </Text>
-
-              <TextInput
-                style={[
-                  styles.nameInput,
-                  focusedNameInput && styles.nameInputFocused,
-                ]}
-                placeholder="e.g. September Harvest"
-                value={calculationName}
-                onChangeText={setCalculationName}
-                onFocus={() => setFocusedNameInput(true)}
-                onBlur={() => setFocusedNameInput(false)}
-                autoFocus
-              />
-
-              <View style={styles.nameInputButtons}>
-                <Pressable
-                  style={styles.cancelNameButton}
-                  onPress={() => {
-                    setCalculationName("");
-                    setShowNameInput(false);
-                  }}
-                >
-                  <Text style={styles.cancelNameButtonText}>Cancel</Text>
-                </Pressable>
-
-                <Pressable
-                  style={styles.confirmSaveButton}
-                  onPress={handleSave}
-                >
-                  <Text style={styles.confirmSaveButtonText}>💾 Save</Text>
-                </Pressable>
+                <Text style={styles.printButtonText}>Print Calculation</Text>
               </View>
-            </View>
-          )}
+            </AnimatedActionButton>
 
-          <Pressable style={styles.printButton} onPress={handlePrint}>
-            <Text style={styles.printButtonText}>🖨️ Print Calculation</Text>
-          </Pressable>
+            {/* New Calculation */}
+            {!isHistoryView && (
+              <AnimatedActionButton
+                style={styles.newButton}
+                onPress={() => router.replace("/")}
+              >
+                <View style={styles.actionButtonContent}>
+                  <MaterialCommunityIcons
+                    name="plus-circle-outline"
+                    size={22}
+                    color="#FFFFFF"
+                  />
 
-          {/* New Calculation */}
-          {!isHistoryView && (
-            <Pressable
-              style={styles.newButton}
-              onPress={() => router.replace("/")}
-            >
-              <Text style={styles.newButtonText}>New Calculation</Text>
-            </Pressable>
-          )}
-        </View>
-      </ScrollView>
+                  <Text style={styles.newButtonText}>New Calculation</Text>
+                </View>
+              </AnimatedActionButton>
+            )}
+          </View>
+        </ScrollView>
+      </KeyboardAvoidingView>
     </SafeAreaView>
   );
 }
@@ -994,15 +1205,35 @@ const styles = StyleSheet.create({
 
   scrollContent: {
     flexGrow: 1,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 24,
   },
 
   content: {
     width: "100%",
     maxWidth: 600,
     alignSelf: "center",
-    paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 40,
+    paddingHorizontal: 16,
+    paddingTop: 24,
+    paddingBottom: 24,
+  },
+
+  // -------------------------
+  // Back Button
+  // -------------------------
+
+  backButton: {
+    alignSelf: "flex-start",
+    marginBottom: 8,
+    paddingVertical: 8,
+    paddingHorizontal: 4,
+  },
+
+  backButtonText: {
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#2F6B3F",
   },
 
   // -------------------------
@@ -1260,26 +1491,96 @@ const styles = StyleSheet.create({
   // Tenant
   // -------------------------
 
-  tenantRow: {
+  tenantResultBox: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 10,
-    paddingTop: 13,
-    borderTopWidth: 1,
-    borderTopColor: "#DCE4DD",
+
+    marginTop: 14,
+    paddingTop: 14,
+    paddingBottom: 14,
+    paddingHorizontal: 14,
+
+    backgroundColor: "#E5F1E8",
+    borderWidth: 1,
+    borderColor: "#CFE0D2",
+    borderRadius: 12,
   },
 
-  tenantLabel: {
+  tenantResultLabel: {
     fontSize: 16,
     fontWeight: "800",
     color: "#2F6B3F",
   },
 
-  tenantValue: {
+  tenantResultDescription: {
+    fontSize: 12,
+    color: "#66736A",
+    marginTop: 3,
+  },
+
+  tenantResultRight: {
+    alignItems: "flex-end",
+    marginLeft: 12,
+  },
+
+  tenantResultValue: {
     fontSize: 17,
     fontWeight: "800",
     color: "#2F6B3F",
+    textAlign: "right",
+  },
+
+  tenantTaroValue: {
+    fontSize: 11,
+    color: "#66736A",
+    marginTop: 2,
+  },
+
+  totalTenantBox: {
+    flexDirection: "row",
+    justifyContent: "space-between",
+    alignItems: "center",
+
+    marginTop: 14,
+    paddingTop: 15,
+    paddingBottom: 15,
+    paddingHorizontal: 14,
+
+    backgroundColor: "#E5F1E8",
+    borderWidth: 1,
+    borderColor: "#CFE0D2",
+    borderRadius: 12,
+  },
+
+  totalTenantLabel: {
+    fontSize: 17,
+    fontWeight: "800",
+    color: "#2F6B3F",
+  },
+
+  totalTenantDescription: {
+    fontSize: 12,
+    color: "#66736A",
+    marginTop: 3,
+  },
+
+  totalTenantRight: {
+    alignItems: "flex-end",
+    marginLeft: 12,
+  },
+
+  totalTenantValue: {
+    fontSize: 18,
+    fontWeight: "800",
+    color: "#2F6B3F",
+    textAlign: "right",
+  },
+
+  totalTenantTaro: {
+    fontSize: 11,
+    color: "#66736A",
+    marginTop: 2,
   },
 
   // -------------------------
@@ -1312,14 +1613,64 @@ const styles = StyleSheet.create({
     marginBottom: 12,
   },
 
-  tenantTotalRow: {
+  totalShareBox: {
+    backgroundColor: "#F0F6F1",
+    borderWidth: 1,
+    borderColor: "#D5E5D8",
+    borderRadius: 12,
+    marginTop: 4,
+    marginBottom: 4,
+    overflow: "hidden",
+  },
+
+  totalShareButton: {
+    paddingVertical: 13,
+    paddingHorizontal: 12,
+  },
+
+  totalShareTextContainer: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 10,
-    paddingTop: 14,
+  },
+
+  totalShareLabel: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#2F6B3F",
+  },
+
+  totalShareDescription: {
+    fontSize: 12,
+    color: "#66736A",
+    marginTop: 2,
+  },
+
+  totalShareRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+
+  totalShareValue: {
+    fontSize: 15,
+    fontWeight: "800",
+    color: "#2F6B3F",
+  },
+
+  totalShareArrow: {
+    fontSize: 12,
+    fontWeight: "800",
+    color: "#2F6B3F",
+    marginLeft: 8,
+  },
+
+  totalShareBreakdown: {
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    paddingTop: 2,
     borderTopWidth: 1,
-    borderTopColor: "#DCE4DD",
+    borderTopColor: "#D5E5D8",
   },
 
   // -------------------------
@@ -1413,6 +1764,14 @@ const styles = StyleSheet.create({
   // -------------------------
   // Action buttons
   // -------------------------
+
+  actionButtonContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    justifyContent: "center",
+    gap: 5,
+    paddingHorizontal: 15,
+  },
 
   saveButton: {
     backgroundColor: "#E5F1E8",

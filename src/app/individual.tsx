@@ -2,16 +2,16 @@ import { MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    Alert,
-    Animated,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Alert,
+  Animated,
+  Platform,
+  Pressable,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
+import { KeyboardAwareScrollView } from "react-native-keyboard-aware-scroll-view";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { calculateIndividualShares } from "../utils/farmCalculator";
 
@@ -24,8 +24,9 @@ type Mananomay = {
 };
 
 export default function IndividualScreen() {
-  const scrollViewRef = useRef<ScrollView>(null);
+  //   const scrollViewRef = useRef<ScrollView>(null);
   const inputRefs = useRef<Record<string, any>>({});
+
   //Animation values
   const headerFade = useRef(new Animated.Value(0)).current;
   const headerSlide = useRef(new Animated.Value(-20)).current;
@@ -47,22 +48,6 @@ export default function IndividualScreen() {
       taro: "",
     },
   ]);
-
-  useEffect(() => {
-    Animated.parallel([
-      Animated.timing(headerFade, {
-        toValue: 1,
-        duration: 600,
-        useNativeDriver: Platform.OS !== "web",
-      }),
-      Animated.spring(headerSlide, {
-        toValue: 0,
-        friction: 8,
-        tension: 50,
-        useNativeDriver: Platform.OS !== "web",
-      }),
-    ]).start();
-  }, []);
 
   useEffect(() => {
     Animated.parallel([
@@ -327,16 +312,20 @@ export default function IndividualScreen() {
 
   return (
     <SafeAreaView style={styles.container}>
-      <ScrollView
-        ref={scrollViewRef}
+      <KeyboardAwareScrollView
         contentContainerStyle={styles.scrollContent}
         keyboardShouldPersistTaps="handled"
+        enableOnAndroid
+        extraScrollHeight={100}
+        extraHeight={100}
       >
         <View style={styles.content}>
-          {/* Back button
-                    <Pressable onPress={() => router.replace('/')}>
-                        <Text style={styles.backButton}>← Back</Text>
-                    </Pressable> */}
+          {/* <Pressable
+            style={styles.backButton}
+            onPress={() => router.replace("/")}
+          >
+            <Text style={styles.backButtonText}>← Back</Text>
+          </Pressable> */}
 
           {/* Header */}
           <Animated.View
@@ -405,17 +394,20 @@ export default function IndividualScreen() {
                   styles.input,
                   focusedInput === `${person.id}-name` && styles.inputFocused,
                 ]}
-                placeholder="e.g. John"
+                placeholder="e.g. Danny"
                 placeholderTextColor="#888888"
                 value={person.name}
                 onChangeText={(value) =>
                   updateMananomay(person.id, "name", value)
                 }
-                onFocus={() => setFocusedInput(`${person.id}-name`)}
+                onFocus={() => {
+                  setFocusedInput(`${person.id}-name`);
+                }}
                 onBlur={() => setFocusedInput(null)}
                 ref={(ref) => {
                   inputRefs.current[`${person.id}-name`] = ref;
                 }}
+                //Auto add mananomay after checking taro
                 returnKeyType="next"
                 onSubmitEditing={() => focusInput(person.id, "kahon")}
               />
@@ -441,6 +433,10 @@ export default function IndividualScreen() {
                 onChangeText={(value) =>
                   updateMananomay(person.id, "kahon", value)
                 }
+                onFocus={() => {
+                  setFocusedInput(`${person.id}-kahon`);
+                }}
+                onBlur={() => setFocusedInput(null)}
                 ref={(ref) => {
                   inputRefs.current[`${person.id}-kahon`] = ref;
                 }}
@@ -471,7 +467,9 @@ export default function IndividualScreen() {
                   onChangeText={(value) =>
                     updateMananomay(person.id, "sacks", value)
                   }
-                  onFocus={() => setFocusedInput(`${person.id}-sacks`)}
+                  onFocus={() => {
+                    setFocusedInput(`${person.id}-sacks`);
+                  }}
                   onBlur={() => setFocusedInput(null)}
                   ref={(ref) => {
                     inputRefs.current[`${person.id}-sacks`] = ref;
@@ -496,15 +494,17 @@ export default function IndividualScreen() {
                   onChangeText={(value) =>
                     updateMananomay(person.id, "taro", value)
                   }
-                  onFocus={() => setFocusedInput(`${person.id}-taro`)}
+                  onFocus={() => {
+                    setFocusedInput(`${person.id}-taro`);
+                  }}
                   onBlur={() => setFocusedInput(null)}
                   ref={(ref) => {
                     inputRefs.current[`${person.id}-taro`] = ref;
                   }}
                   returnKeyType="done"
-                  onSubmitEditing={() => {
-                    addMananomay();
-                  }}
+                  //   onSubmitEditing={() => {
+                  //     addMananomay();
+                  //   }}
                 />
 
                 <Text style={styles.unit}>taro</Text>
@@ -560,7 +560,7 @@ export default function IndividualScreen() {
             </Animated.View>
           </Animated.View>
         </View>
-      </ScrollView>
+      </KeyboardAwareScrollView>
     </SafeAreaView>
   );
 }
@@ -580,34 +580,21 @@ const styles = StyleSheet.create({
     maxWidth: 600,
     alignSelf: "center",
     paddingHorizontal: 24,
-    paddingTop: 16,
-    paddingBottom: 40,
+    marginTop: 30,
+    // paddingBottom: 5,
   },
 
-  backButton: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 24,
-  },
-
-  //   icon: {
-  //     fontSize: 50,
-  //     textAlign: "center",
+  //   backButton: {
+  //     alignSelf: "flex-start",
   //     marginBottom: 8,
+  //     paddingVertical: 8,
+  //     paddingHorizontal: 4,
   //   },
 
-  //   title: {
-  //     fontSize: 26,
-  //     fontWeight: "bold",
-  //     textAlign: "center",
-  //     marginBottom: 8,
-  //   },
-
-  //   subtitle: {
+  //   backButtonText: {
   //     fontSize: 15,
-  //     textAlign: "center",
-  //     color: "#666666",
-  //     marginBottom: 32,
+  //     fontWeight: "700",
+  //     color: "#2F6B3F",
   //   },
 
   sectionTitle: {
