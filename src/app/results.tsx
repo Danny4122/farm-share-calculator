@@ -1,19 +1,22 @@
+import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
 import {
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    TextInput,
-    View,
+  Animated,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  TextInput,
+  View,
 } from "react-native";
 import { SafeAreaView } from "react-native-safe-area-context";
 import { formatTaro } from "../utils/farmCalculator";
 import {
-    getHistory,
-    saveCalculation,
-    updateCalculation,
+  getHistory,
+  saveCalculation,
+  updateCalculation,
 } from "../utils/storage";
 
 type MananomayResult = {
@@ -40,6 +43,13 @@ export default function ResultsScreen() {
 
   const [expandedPerson, setExpandedPerson] = useState<string | null>(null);
 
+  const headerFade = useRef(new Animated.Value(0)).current;
+  const headerSlide = useRef(new Animated.Value(-20)).current;
+  const cardFade = useRef(new Animated.Value(0)).current;
+  const cardSlide = useRef(new Animated.Value(20)).current;
+
+  const [focusedNameInput, setFocusedNameInput] = useState(false);
+
   const [isTotalMananomayExpanded, setIsTotalMananomayExpanded] =
     useState(false);
 
@@ -58,6 +68,63 @@ export default function ResultsScreen() {
   } catch (error) {
     console.log("Error reading results:", error);
   }
+
+  // Animate the Results screen when it opens
+  useEffect(() => {
+    Animated.parallel([
+      Animated.timing(headerFade, {
+        toValue: 1,
+        duration: 600,
+        useNativeDriver: Platform.OS !== "web",
+      }),
+      Animated.spring(headerSlide, {
+        toValue: 0,
+        friction: 8,
+        tension: 50,
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    ]).start();
+
+    Animated.parallel([
+      Animated.timing(cardFade, {
+        toValue: 1,
+        duration: 700,
+        delay: 180,
+        useNativeDriver: Platform.OS !== "web",
+      }),
+      Animated.spring(cardSlide, {
+        toValue: 0,
+        friction: 8,
+        tension: 45,
+        delay: 180,
+        useNativeDriver: Platform.OS !== "web",
+      }),
+    ]).start();
+  }, []);
+
+  // Save a temporary calculation to History
+  useEffect(() => {
+    if (isHistoryView) {
+      return;
+    }
+
+    const saveTemporaryCalculation = async () => {
+      try {
+        await saveCalculation({
+          id: calculationId,
+          name: "",
+          createdAt: new Date().toISOString(),
+          saved: false,
+          workers: results,
+        });
+        console.log("Temporary calculation saved.");
+      } catch (error) {
+        console.error("Failed to save temporary calculation:", error);
+      }
+    };
+
+    saveTemporaryCalculation();
+  }, [isHistoryView]);
 
   const totalGross = results.reduce(
     (total, person) => total + person.harvestTaro,
@@ -90,29 +157,6 @@ export default function ResultsScreen() {
   );
 
   const totalMananomayShare = totalKahon + totalHarvestShare;
-
-  useEffect(() => {
-    if (isHistoryView) {
-      return;
-    }
-
-    const saveTemporaryCalculation = async () => {
-      try {
-        await saveCalculation({
-          id: calculationId,
-          name: "",
-          createdAt: new Date().toISOString(),
-          saved: false,
-          workers: results,
-        });
-        console.log("Temporary calculation saved.");
-      } catch (error) {
-        console.error("Failed to save temporary calculation:", error);
-      }
-    };
-
-    saveTemporaryCalculation();
-  }, [isHistoryView]);
 
   const handleSave = async () => {
     const trimmedName = calculationName.trim();
@@ -155,18 +199,7 @@ export default function ResultsScreen() {
       ? new Date(params.createdAt)
       : new Date();
 
-  const handlePrint = () => {
-    if (typeof window === "undefined") {
-      return;
-    }
-
-    const printWindow = window.open("", "_blank");
-
-    if (!printWindow) {
-      alert("Unable to open the print window.");
-      return;
-    }
-
+  const handlePrint = async () => {
     const calculationTitle =
       calculationName.trim() || "Farm Harvest Calculation";
 
@@ -264,7 +297,7 @@ export default function ResultsScreen() {
       })
       .join("");
 
-    printWindow.document.write(`
+    const html = `
         <!DOCTYPE html>
         <html>
         <head>
@@ -614,48 +647,66 @@ export default function ResultsScreen() {
             </section>
         </body>
         </html>
-    `);
+    `;
 
-    printWindow.document.close();
-    printWindow.focus();
-    printWindow.print();
+    if (Platform.OS === "web") {
+      const printWindow = window.open("", "_blank");
+
+      if (!printWindow) {
+        alert("Unable to open the print window.");
+        return;
+      }
+
+      printWindow.document.write(html);
+      printWindow.document.close();
+      printWindow.focus();
+      printWindow.print();
+    } else {
+      try {
+        await Print.printAsync({
+          html,
+        });
+      } catch (error) {
+        console.error("Failed to print:", error);
+        alert("Unable to open the print dialog.");
+      }
+    }
   };
 
   return (
     <SafeAreaView style={styles.container}>
       <ScrollView contentContainerStyle={styles.scrollContent}>
         <View style={styles.content}>
-          {/* Back button */}
-          <Pressable onPress={() => router.back()}>
-            {/* <Text style={styles.backButton}>
-                            ← Back
-                        </Text> */}
-          </Pressable>
-
           {/* Header */}
-          <Text style={styles.icon}>🌾</Text>
+          <Animated.View
+            style={[
+              styles.header,
+              {
+                opacity: headerFade,
+                transform: [{ translateY: headerSlide }],
+              },
+            ]}
+          >
+            <View style={styles.headerIcon}>
+              <Text style={styles.headerIconText}>🌾</Text>
+            </View>
 
-          {isHistoryView ? (
-            <>
+            {isHistoryView ? (
               <Text style={styles.title}>
                 {calculationName.trim() || "Unnamed Calculation"}
               </Text>
+            ) : (
+              <Text style={styles.title}>Farm Share Results</Text>
+            )}
 
-              {/* <Text style={styles.subtitle}>Farm Share Results</Text> */}
+            <Text style={styles.subtitle}>
+              Individual calculation for each mananomay
+            </Text>
 
-              <Text style={styles.subtitle}>
-                Individual calculation for each mananomay
-              </Text>
-            </>
-          ) : (
-            <>
-              <Text style={styles.title}>🌾 Farm Share Results</Text>
-
-              <Text style={styles.subtitle}>
-                Individual calculation for each mananomay
-              </Text>
-            </>
-          )}
+            <View style={styles.unitBadge}>
+              <Text style={styles.unitBadgeText}>1 sack = 4 taro</Text>
+            </View>
+          </Animated.View>
 
           {/* Individual Results */}
           {results.map((person, index) => {
@@ -666,12 +717,30 @@ export default function ResultsScreen() {
             const isExpanded = expandedPerson === personKey;
 
             return (
-              <View key={personKey} style={styles.personCard}>
+              <Animated.View
+                key={personKey}
+                style={[
+                  styles.personCard,
+                  {
+                    opacity: cardFade,
+                    transform: [{ translateY: cardSlide }],
+                  },
+                ]}
+              >
                 {/* Person name */}
-                <Text style={styles.personTitle}>{person.name}</Text>
+                <View style={styles.personHeader}>
+                  <View style={styles.personNameRow}>
+                    <View style={styles.personIcon}>
+                      <Text style={styles.personIconText}>👤</Text>
+                    </View>
 
-                <Text style={styles.kahonText}>{person.kahon} kahon</Text>
+                    <View>
+                      <Text style={styles.personTitle}>{person.name}</Text>
 
+                      <Text style={styles.kahonText}>{person.kahon} kahon</Text>
+                    </View>
+                  </View>
+                </View>
                 {/* Gross Harvest */}
                 <View style={styles.resultRow}>
                   <Text style={styles.resultLabel}>Gross Harvest</Text>
@@ -680,7 +749,6 @@ export default function ResultsScreen() {
                     {formatTaro(person.harvestTaro)}
                   </Text>
                 </View>
-
                 {/* Harvester */}
                 <View style={styles.resultRow}>
                   <Text style={styles.resultLabel}>Harvester</Text>
@@ -689,54 +757,65 @@ export default function ResultsScreen() {
                     {formatTaro(person.harvesterShare)}
                   </Text>
                 </View>
-
                 {/* Expandable Mananomay Share */}
-                <Pressable
-                  style={styles.shareButton}
-                  onPress={() =>
-                    setExpandedPerson(isExpanded ? null : personKey)
-                  }
-                >
-                  <View style={styles.shareTextContainer}>
-                    <Text style={styles.shareLabel}>{person.name}'s Share</Text>
+                <View style={styles.shareBox}>
+                  <Pressable
+                    style={styles.shareButton}
+                    onPress={() =>
+                      setExpandedPerson(isExpanded ? null : personKey)
+                    }
+                  >
+                    <View style={styles.shareTextContainer}>
+                      <View>
+                        <Text style={styles.shareLabel}>
+                          {person.name}'s Share
+                        </Text>
 
-                    <Text style={styles.shareValue}>
-                      {formatTaro(mananomayShare)}
-                    </Text>
-                  </View>
+                        <Text style={styles.shareDescription}>
+                          Kahon + harvest share
+                        </Text>
+                      </View>
 
-                  <Text style={styles.arrow}>{isExpanded ? "▲" : "▼"}</Text>
-                </Pressable>
+                      <View style={styles.shareRight}>
+                        <Text style={styles.shareValue}>
+                          {formatTaro(mananomayShare)}
+                        </Text>
 
-                {/* Expanded Breakdown */}
-                {isExpanded && (
-                  <View style={styles.breakdown}>
-                    <View style={styles.breakdownRow}>
-                      <Text style={styles.breakdownLabel}>Kahon Share</Text>
-
-                      <Text style={styles.breakdownValue}>
-                        {formatTaro(person.fixedKahonShare)}
-                      </Text>
+                        <Text style={styles.arrow}>
+                          {isExpanded ? "▲" : "▼"}
+                        </Text>
+                      </View>
                     </View>
+                  </Pressable>
 
-                    <View style={styles.breakdownRow}>
-                      <Text style={styles.breakdownLabel}>Harvest Share</Text>
+                  {isExpanded && (
+                    <View style={styles.breakdown}>
+                      <View style={styles.breakdownRow}>
+                        <Text style={styles.breakdownLabel}>Kahon Share</Text>
 
-                      <Text style={styles.breakdownValue}>
-                        {formatTaro(person.harvestShare)}
-                      </Text>
+                        <Text style={styles.breakdownValue}>
+                          {formatTaro(person.fixedKahonShare)}
+                        </Text>
+                      </View>
+
+                      <View style={styles.breakdownRow}>
+                        <Text style={styles.breakdownLabel}>Harvest Share</Text>
+
+                        <Text style={styles.breakdownValue}>
+                          {formatTaro(person.harvestShare)}
+                        </Text>
+                      </View>
+
+                      <View style={styles.breakdownTotal}>
+                        <Text style={styles.breakdownTotalLabel}>Total</Text>
+
+                        <Text style={styles.breakdownTotalValue}>
+                          {formatTaro(mananomayShare)}
+                        </Text>
+                      </View>
                     </View>
-
-                    <View style={styles.breakdownTotal}>
-                      <Text style={styles.breakdownTotalLabel}>Total</Text>
-
-                      <Text style={styles.breakdownTotalValue}>
-                        {formatTaro(mananomayShare)}
-                      </Text>
-                    </View>
-                  </View>
-                )}
-
+                  )}
+                </View>
                 {/* Owner */}
                 <View style={styles.resultRow}>
                   <Text style={styles.resultLabel}>Owner Share</Text>
@@ -745,7 +824,6 @@ export default function ResultsScreen() {
                     {formatTaro(person.ownerShare)}
                   </Text>
                 </View>
-
                 {/* Tenant */}
                 <View style={styles.tenantRow}>
                   <Text style={styles.tenantLabel}>Tenant Share</Text>
@@ -754,7 +832,7 @@ export default function ResultsScreen() {
                     {formatTaro(person.tenantShare)}
                   </Text>
                 </View>
-              </View>
+              </Animated.View>
             );
           })}
           {/* Complete Total */}
@@ -856,10 +934,15 @@ export default function ResultsScreen() {
               </Text>
 
               <TextInput
-                style={styles.nameInput}
+                style={[
+                  styles.nameInput,
+                  focusedNameInput && styles.nameInputFocused,
+                ]}
                 placeholder="e.g. September Harvest"
                 value={calculationName}
                 onChangeText={setCalculationName}
+                onFocus={() => setFocusedNameInput(true)}
+                onBlur={() => setFocusedNameInput(false)}
                 autoFocus
               />
 
@@ -922,81 +1005,165 @@ const styles = StyleSheet.create({
     paddingBottom: 40,
   },
 
-  backButton: {
-    fontSize: 16,
-    fontWeight: "600",
-    marginBottom: 24,
+  // -------------------------
+  // Header
+  // -------------------------
+
+  header: {
+    alignItems: "center",
+    marginBottom: 28,
   },
 
-  icon: {
-    fontSize: 50,
-    textAlign: "center",
-    marginBottom: 8,
+  headerIcon: {
+    width: 72,
+    height: 72,
+    borderRadius: 24,
+    backgroundColor: "#E5F1E8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginBottom: 14,
+  },
+
+  headerIconText: {
+    fontSize: 38,
   },
 
   title: {
-    fontSize: 26,
-    fontWeight: "bold",
+    fontSize: 28,
+    fontWeight: "800",
+    color: "#1F3525",
     textAlign: "center",
     marginBottom: 8,
   },
 
   subtitle: {
     fontSize: 15,
+    lineHeight: 22,
     textAlign: "center",
-    color: "#666666",
-    marginBottom: 12,
+    color: "#66736A",
+    maxWidth: 360,
+    marginBottom: 14,
   },
+
+  unitBadge: {
+    backgroundColor: "#F0F6F1",
+    borderWidth: 1,
+    borderColor: "#D5E5D8",
+    paddingHorizontal: 14,
+    paddingVertical: 7,
+    borderRadius: 20,
+  },
+
+  unitBadgeText: {
+    fontSize: 13,
+    fontWeight: "700",
+    color: "#2F6B3F",
+  },
+
+  // -------------------------
+  // Person card
+  // -------------------------
 
   personCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 16,
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 18,
     borderWidth: 1,
-    borderColor: "#DDDDDD",
+    borderColor: "#DCE4DD",
+
+    shadowColor: "#1F3525",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.08,
+    shadowRadius: 8,
+    elevation: 3,
+  },
+
+  personHeader: {
+    marginBottom: 12,
+  },
+
+  personNameRow: {
+    flexDirection: "row",
+    alignItems: "center",
+  },
+
+  personIcon: {
+    width: 42,
+    height: 42,
+    borderRadius: 14,
+    backgroundColor: "#E5F1E8",
+    alignItems: "center",
+    justifyContent: "center",
+    marginRight: 12,
+  },
+
+  personIconText: {
+    fontSize: 20,
   },
 
   personTitle: {
-    fontSize: 21,
-    fontWeight: "700",
-    marginBottom: 4,
+    fontSize: 20,
+    fontWeight: "800",
+    color: "#1F3525",
+    marginBottom: 3,
   },
 
   kahonText: {
-    fontSize: 14,
-    color: "#666666",
-    marginBottom: 14,
+    fontSize: 13,
+    fontWeight: "600",
+    color: "#66736A",
   },
+
+  // -------------------------
+  // Result rows
+  // -------------------------
 
   resultRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    paddingVertical: 9,
+    paddingVertical: 11,
     borderBottomWidth: 1,
-    borderBottomColor: "#EEEEEE",
+    borderBottomColor: "#EEF1ED",
   },
 
   resultLabel: {
     fontSize: 15,
-    color: "#444444",
+    color: "#34463A",
     flex: 1,
   },
 
   resultValue: {
     fontSize: 15,
-    fontWeight: "600",
+    fontWeight: "700",
+    color: "#1F3525",
     textAlign: "right",
+  },
+
+  // -------------------------
+  // Mananomay share
+  // -------------------------
+
+  shareBox: {
+    backgroundColor: "#F0F6F1",
+    borderWidth: 1,
+    borderColor: "#D5E5D8",
+    borderRadius: 12,
+    marginTop: 4,
+    marginBottom: 2,
+    overflow: "hidden",
   },
 
   shareButton: {
     flexDirection: "row",
     alignItems: "center",
     justifyContent: "space-between",
-    paddingVertical: 12,
-    borderBottomWidth: 1,
-    borderBottomColor: "#EEEEEE",
+    paddingVertical: 13,
+    paddingHorizontal: 12,
   },
 
   shareTextContainer: {
@@ -1006,98 +1173,142 @@ const styles = StyleSheet.create({
     flex: 1,
   },
 
+  shareRight: {
+    flexDirection: "row",
+    alignItems: "center",
+    marginLeft: 10,
+  },
+
   shareLabel: {
     fontSize: 15,
-    fontWeight: "700",
+    fontWeight: "800",
+    color: "#2F6B3F",
+  },
+
+  shareDescription: {
+    fontSize: 12,
+    color: "#66736A",
+    marginTop: 2,
   },
 
   shareValue: {
     fontSize: 15,
-    fontWeight: "700",
-    marginLeft: 10,
+    fontWeight: "800",
+    color: "#2F6B3F",
   },
 
   arrow: {
     fontSize: 12,
-    marginLeft: 10,
+    fontWeight: "800",
+    color: "#2F6B3F",
+    marginLeft: 8,
   },
 
+  // -------------------------
+  // Breakdown
+  // -------------------------
+
   breakdown: {
-    backgroundColor: "#F5F7F2",
-    borderRadius: 10,
-    padding: 12,
-    marginTop: 8,
-    marginBottom: 4,
+    paddingHorizontal: 12,
+    paddingBottom: 10,
+    paddingTop: 2,
+    borderTopWidth: 1,
+    borderTopColor: "#D5E5D8",
   },
 
   breakdownRow: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingVertical: 7,
+    alignItems: "center",
+    paddingVertical: 8,
   },
 
   breakdownLabel: {
     fontSize: 14,
-    color: "#555555",
+    color: "#55645A",
   },
 
   breakdownValue: {
     fontSize: 14,
-    fontWeight: "600",
+    fontWeight: "700",
+    color: "#1F3525",
   },
 
   breakdownTotal: {
     flexDirection: "row",
     justifyContent: "space-between",
-    paddingTop: 9,
+    alignItems: "center",
+    paddingTop: 10,
     marginTop: 5,
     borderTopWidth: 1,
-    borderTopColor: "#CCCCCC",
+    borderTopColor: "#D5DDD6",
   },
 
   breakdownTotalLabel: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
+    color: "#1F3525",
   },
 
   breakdownTotalValue: {
     fontSize: 14,
-    fontWeight: "700",
+    fontWeight: "800",
+    color: "#2F6B3F",
   },
+
+  // -------------------------
+  // Tenant
+  // -------------------------
 
   tenantRow: {
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
-    paddingTop: 12,
+    marginTop: 10,
+    paddingTop: 13,
+    borderTopWidth: 1,
+    borderTopColor: "#DCE4DD",
   },
 
   tenantLabel: {
     fontSize: 16,
-    fontWeight: "700",
-    color: "#008000",
+    fontWeight: "800",
+    color: "#2F6B3F",
   },
 
   tenantValue: {
     fontSize: 17,
-    fontWeight: "700",
-    color: "#008000",
+    fontWeight: "800",
+    color: "#2F6B3F",
   },
+
+  // -------------------------
+  // Complete total
+  // -------------------------
 
   totalCard: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 18,
-    marginTop: 8,
-    marginBottom: 16,
-    borderWidth: 2,
+    borderRadius: 18,
+    padding: 20,
+    marginTop: 4,
+    marginBottom: 18,
+    borderWidth: 1.5,
     borderColor: "#2F6B3F",
+
+    shadowColor: "#2F6B3F",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.1,
+    shadowRadius: 8,
+    elevation: 3,
   },
 
   totalTitle: {
     fontSize: 22,
-    fontWeight: "700",
+    fontWeight: "800",
+    color: "#1F3525",
     marginBottom: 12,
   },
 
@@ -1105,39 +1316,62 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     justifyContent: "space-between",
     alignItems: "center",
-    marginTop: 8,
+    marginTop: 10,
     paddingTop: 14,
+    borderTopWidth: 1,
+    borderTopColor: "#DCE4DD",
   },
+
+  // -------------------------
+  // Save input
+  // -------------------------
 
   nameInputContainer: {
     backgroundColor: "#FFFFFF",
-    borderRadius: 16,
-    padding: 18,
-    marginBottom: 12,
+    borderRadius: 18,
+    padding: 20,
+    marginBottom: 14,
     borderWidth: 1,
-    borderColor: "#DDDDDD",
+    borderColor: "#DCE4DD",
+
+    shadowColor: "#1F3525",
+    shadowOffset: {
+      width: 0,
+      height: 3,
+    },
+    shadowOpacity: 0.07,
+    shadowRadius: 7,
+    elevation: 2,
   },
 
   nameInputLabel: {
     fontSize: 18,
-    fontWeight: "700",
+    fontWeight: "800",
+    color: "#1F3525",
     marginBottom: 6,
   },
 
   nameInputDescription: {
     fontSize: 14,
-    color: "#666666",
-    marginBottom: 12,
+    lineHeight: 20,
+    color: "#66736A",
+    marginBottom: 13,
   },
 
   nameInput: {
     borderWidth: 1,
     borderColor: "#CCCCCC",
-    borderRadius: 10,
-    paddingHorizontal: 14,
-    paddingVertical: 12,
+    borderRadius: 12,
+    paddingHorizontal: 15,
+    paddingVertical: 13,
     fontSize: 16,
-    backgroundColor: "#FAFAFA",
+    backgroundColor: "#FFFFFF",
+    color: "#1F3525",
+  },
+
+  nameInputFocused: {
+    borderColor: "#2F6B3F",
+    borderWidth: 2,
   },
 
   nameInputButtons: {
@@ -1148,35 +1382,43 @@ const styles = StyleSheet.create({
 
   cancelNameButton: {
     flex: 1,
-    backgroundColor: "#EEEEEE",
-    borderRadius: 10,
+    backgroundColor: "#F3F4F2",
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
+    borderWidth: 1,
+    borderColor: "#DCE0DC",
   },
 
   cancelNameButtonText: {
-    fontSize: 16,
-    fontWeight: "600",
-    color: "#444444",
+    fontSize: 15,
+    fontWeight: "700",
+    color: "#59645D",
   },
 
   confirmSaveButton: {
     flex: 1,
     backgroundColor: "#2F6B3F",
-    borderRadius: 10,
+    borderRadius: 12,
     paddingVertical: 14,
     alignItems: "center",
   },
 
   confirmSaveButtonText: {
-    fontSize: 16,
-    fontWeight: "700",
+    fontSize: 15,
+    fontWeight: "800",
     color: "#FFFFFF",
   },
 
+  // -------------------------
+  // Action buttons
+  // -------------------------
+
   saveButton: {
-    backgroundColor: "#E8F0E5",
-    borderRadius: 12,
+    backgroundColor: "#E5F1E8",
+    borderWidth: 1,
+    borderColor: "#CFE0D2",
+    borderRadius: 14,
     paddingVertical: 16,
     alignItems: "center",
     marginBottom: 12,
@@ -1184,38 +1426,46 @@ const styles = StyleSheet.create({
 
   saveButtonText: {
     color: "#2F6B3F",
-    fontSize: 17,
-    fontWeight: "bold",
-  },
-
-  newButton: {
-    backgroundColor: "#2F6B3F",
-    borderRadius: 12,
-    paddingVertical: 16,
-    alignItems: "center",
-  },
-
-  newButtonText: {
-    color: "#FFFFFF",
-    fontSize: 17,
-    fontWeight: "bold",
+    fontSize: 16,
+    fontWeight: "800",
   },
 
   printButton: {
     width: "100%",
-    maxWidth: 600,
-    alignSelf: "center",
-    borderWidth: 1,
+    borderWidth: 1.5,
     borderColor: "#2F6B3F",
-    borderRadius: 10,
-    paddingVertical: 12,
+    backgroundColor: "#FFFFFF",
+    borderRadius: 14,
+    paddingVertical: 15,
     alignItems: "center",
     marginBottom: 12,
   },
 
   printButtonText: {
     fontSize: 16,
-    fontWeight: "700",
+    fontWeight: "800",
     color: "#2F6B3F",
+  },
+
+  newButton: {
+    backgroundColor: "#2F6B3F",
+    borderRadius: 14,
+    paddingVertical: 17,
+    alignItems: "center",
+
+    shadowColor: "#2F6B3F",
+    shadowOffset: {
+      width: 0,
+      height: 4,
+    },
+    shadowOpacity: 0.2,
+    shadowRadius: 7,
+    elevation: 4,
+  },
+
+  newButtonText: {
+    color: "#FFFFFF",
+    fontSize: 17,
+    fontWeight: "800",
   },
 });

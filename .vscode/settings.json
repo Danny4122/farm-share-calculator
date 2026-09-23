@@ -20,7 +20,7 @@
     "editor.defaultFormatter": "ced-lab.tidy-formatter"
   },
   "[jsonc]": {
-    "editor.defaultFormatter": "ced-lab.tidy-formatter"
+    "editor.defaultFormatter": "esbenp.prettier-vscode"
   },
   "[javascript]": {
     "editor.defaultFormatter": "ced-lab.tidy-formatter"
