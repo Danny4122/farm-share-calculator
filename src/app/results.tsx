@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
 import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -298,15 +299,29 @@ export default function ResultsScreen() {
     const calculationTitle =
       calculationName.trim() || "Farm Harvest Calculation";
 
+    const escapeHtml = (value: string) =>
+      value
+        .replace(/&/g, "&amp;")
+        .replace(/</g, "&lt;")
+        .replace(/>/g, "&gt;")
+        .replace(/"/g, "&quot;")
+        .replace(/'/g, "&#039;");
+
+    const safeTitle = escapeHtml(calculationTitle);
+
+    const formattedDate = calculationDate.toLocaleString();
+
     const workerSections = results
-      .map((worker) => {
+      .map((worker, index) => {
         const harvestSacks = Math.floor(worker.harvestTaro / 4);
         const harvestRemainingTaro = worker.harvestTaro % 4;
 
         const harvestDisplay =
           harvestRemainingTaro === 0
             ? `${harvestSacks} sack${harvestSacks !== 1 ? "s" : ""}`
-            : `${harvestSacks} sacks + ${harvestRemainingTaro} taro`;
+            : harvestSacks === 0
+              ? `${harvestRemainingTaro} taro`
+              : `${harvestSacks} sacks + ${harvestRemainingTaro} taro`;
 
         const afterHarvester = worker.harvestTaro - worker.harvesterShare;
 
@@ -315,434 +330,1091 @@ export default function ResultsScreen() {
         const afterHarvestShare = afterFixed - worker.harvestShare;
 
         return `
-                <section class="worker">
-                    <h2>${worker.name}</h2>
+        <section class="worker-card">
+          <div class="worker-header">
+            <div>
+              <div class="worker-number">MANANOMAY ${index + 1}</div>
+              <h2>${escapeHtml(worker.name || "Unnamed Worker")}</h2>
+            </div>
 
-                    <h3>Input</h3>
+            <div class="worker-kahon">
+              <span>Kahon</span>
+              <strong>${worker.kahon}</strong>
+            </div>
+          </div>
 
-                    <p>
-                        <strong>Kahon:</strong>
-                        ${worker.kahon}
-                    </p>
+          <div class="worker-inputs">
+            <div class="input-item">
+              <span class="input-label">Harvest</span>
+              <strong>${harvestDisplay}</strong>
+              <small>${worker.harvestTaro} taro</small>
+            </div>
 
-                    <p>
-                        <strong>Harvest:</strong>
-                        ${harvestDisplay}
-                        (${worker.harvestTaro} taro)
-                    </p>
+            <div class="input-item">
+              <span class="input-label">Kahon</span>
+              <strong>${worker.kahon}</strong>
+              <small>2 taro per kahon</small>
+            </div>
+          </div>
 
-                    <h3>Calculation Details</h3>
+          <div class="calculation-heading">
+            Calculation Breakdown
+          </div>
 
-                    <p>
-                        <strong>Harvester Share:</strong><br>
-                        ${worker.harvestTaro} ÷ 15
-                        = ${worker.harvestTaro / 15}
-                        → ${worker.harvesterShare} taro
-                    </p>
+          <div class="calculation-table">
+            <div class="calc-row">
+              <div class="calc-label">
+                <strong>Harvester Share</strong>
+                <span>${worker.harvestTaro} ÷ 15</span>
+              </div>
+              <div class="calc-value">
+                ${worker.harvesterShare} taro
+              </div>
+            </div>
 
-                    <p>
-                        <strong>After Harvester:</strong><br>
-                        ${worker.harvestTaro}
-                        − ${worker.harvesterShare}
-                        = ${afterHarvester} taro
-                    </p>
+            <div class="calc-row muted-row">
+              <div class="calc-label">
+                <span>Remaining after harvester</span>
+              </div>
+              <div class="calc-value">
+                ${afterHarvester} taro
+              </div>
+            </div>
 
-                    <p>
-                        <strong>Kahon Share:</strong><br>
-                        ${worker.kahon} × 2
-                        = ${worker.fixedKahonShare} taro
-                    </p>
+            <div class="calc-row">
+              <div class="calc-label">
+                <strong>Fixed Kahon Share</strong>
+                <span>${worker.kahon} × 2</span>
+              </div>
+              <div class="calc-value">
+                ${worker.fixedKahonShare} taro
+              </div>
+            </div>
 
-                    <p>
-                        <strong>After Kahon Share:</strong><br>
-                        ${afterHarvester}
-                        − ${worker.fixedKahonShare}
-                        = ${afterFixed} taro
-                    </p>
+            <div class="calc-row muted-row">
+              <div class="calc-label">
+                <span>Remaining after kahon share</span>
+              </div>
+              <div class="calc-value">
+                ${afterFixed} taro
+              </div>
+            </div>
 
-                    <p>
-                        <strong>Harvest Share:</strong><br>
-                        ${afterFixed} ÷ 5
-                        = ${afterFixed / 5}
-                        → ${worker.harvestShare} taro
-                    </p>
+            <div class="calc-row">
+              <div class="calc-label">
+                <strong>Mananomay Harvest Share</strong>
+                <span>${afterFixed} ÷ 5</span>
+              </div>
+              <div class="calc-value">
+                ${worker.harvestShare} taro
+              </div>
+            </div>
 
-                    <p>
-                        <strong>After Mananomay Share:</strong><br>
-                        ${afterFixed}
-                        − ${worker.harvestShare}
-                        = ${afterHarvestShare} taro
-                    </p>
+            <div class="calc-row muted-row">
+              <div class="calc-label">
+                <span>Remaining after mananomay share</span>
+              </div>
+              <div class="calc-value">
+                ${afterHarvestShare} taro
+              </div>
+            </div>
 
-                    <p>
-                        <strong>Owner Share:</strong><br>
-                        ${afterHarvestShare} ÷ 4
-                        = ${afterHarvestShare / 4}
-                        → ${worker.ownerShare} taro
-                    </p>
+            <div class="calc-row">
+              <div class="calc-label">
+                <strong>Owner Share</strong>
+                <span>${afterHarvestShare} ÷ 4</span>
+              </div>
+              <div class="calc-value">
+                ${worker.ownerShare} taro
+              </div>
+            </div>
 
-                    <p>
-                        <strong>Tenant Share:</strong><br>
-                        ${afterHarvestShare}
-                        − ${worker.ownerShare}
-                        = ${worker.tenantShare} taro
-                    </p>
-                </section>
-            `;
+            <div class="calc-row final-row">
+              <div class="calc-label">
+                <strong>Tenant Share</strong>
+                <span>Remaining balance</span>
+              </div>
+              <div class="calc-value">
+                ${worker.tenantShare} taro
+              </div>
+            </div>
+          </div>
+
+          <div class="worker-total">
+            <div>
+              <span>Total Harvest</span>
+              <strong>${harvestDisplay}</strong>
+            </div>
+
+            <div class="worker-total-divider"></div>
+
+            <div>
+              <span>Tenant Share</span>
+              <strong>${formatTaro(worker.tenantShare)}</strong>
+            </div>
+          </div>
+        </section>
+      `;
       })
       .join("");
 
+    const iconAsset = Asset.fromModule(require("../../assets/images/icon.png"));
+
+    await iconAsset.downloadAsync();
+
+    const iconUri = iconAsset.localUri || iconAsset.uri;
+
     const html = `
-        <!DOCTYPE html>
-        <html>
-        <head>
-            <title>${calculationTitle}</title>
-                <style>
-                    * {
-                        box-sizing: border-box;
-                    }
+    <!DOCTYPE html>
+    <html>
+      <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
 
-                    body {
-                        font-family: Arial, Helvetica, sans-serif;
-                        max-width: 850px;
-                        margin: 0 auto;
-                        padding: 40px;
-                        color: #222;
-                        font-size: 14px;
-                        line-height: 1.5;
-                    }
+        <title>${safeTitle}</title>
 
-                    .header {
-                        text-align: center;
-                        border-bottom: 2px solid #2F6B3F;
-                        padding-bottom: 20px;
-                        margin-bottom: 24px;
-                    }
+        <style>
+          * {
+            box-sizing: border-box;
+          }
 
-                    .header h1 {
-                        margin: 0 0 6px;
-                        font-size: 26px;
-                    }
+          @page {
+            size: A4;
+            margin: 16mm 14mm 18mm 14mm;
+          }
 
-                    .header .subtitle {
-                        color: #666;
-                        font-size: 14px;
-                    }
+          html,
+          body {
+            margin: 0;
+            padding: 0;
+            background: #ffffff;
+          }
 
-                    .info-grid {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 12px;
-                        margin-bottom: 24px;
-                    }
+          body {
+            font-family:
+              -apple-system,
+              BlinkMacSystemFont,
+              "Segoe UI",
+              Arial,
+              Helvetica,
+              sans-serif;
 
-                    .info-box {
-                        background: #F5F7F2;
-                        border: 1px solid #DDE4D9;
-                        border-radius: 8px;
-                        padding: 12px;
-                    }
+            color: #253029;
+            font-size: 12px;
+            line-height: 1.5;
+          }
 
-                    .info-label {
-                        font-size: 12px;
-                        color: #666;
-                        margin-bottom: 3px;
-                    }
+          .report {
+            max-width: 820px;
+            margin: 0 auto;
+          }
 
-                    .info-value {
-                        font-weight: 700;
-                        font-size: 15px;
-                    }
+          /* =========================
+             HEADER
+          ========================= */
 
-                    .rules {
-                        background: #F5F7F2;
-                        border-left: 4px solid #2F6B3F;
-                        padding: 14px 16px;
-                        margin-bottom: 28px;
-                    }
+          .report-header {
+            padding-bottom: 18px;
+            border-bottom: 2px solid #2F6B3F;
+            margin-bottom: 18px;
+          }
 
-                    .rules h2 {
-                        margin: 0 0 8px;
-                        font-size: 16px;
-                    }
+          .brand-row {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 20px;
+          }
 
-                    .rules p {
-                        margin: 4px 0;
-                    }
+          .brand {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+          }
 
-                    .section-title {
-                        font-size: 20px;
-                        margin: 28px 0 12px;
-                        padding-bottom: 6px;
-                        border-bottom: 1px solid #CCC;
-                    }
+          .brand-mark {
+            width: 52px;
+            height: 52px;
+            border-radius: 12px;
+            overflow: hidden;
+            flex-shrink: 0;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #ffffff;
+            border: 1px solid #dfe7df;
+          }
 
-                    .input-table,
-                    .summary-table {
-                        width: 100%;
-                        border-collapse: collapse;
-                        margin-bottom: 28px;
-                    }
+          .brand-mark img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+          }
 
-                    .input-table th,
-                    .input-table td,
-                    .summary-table th,
-                    .summary-table td {
-                        border: 1px solid #D5D5D5;
-                        padding: 8px;
-                        text-align: left;
-                    }
+          .brand-name {
+            margin: 0;
+            font-size: 17px;
+            font-weight: 800;
+            color: #244D30;
+            letter-spacing: 0.2px;
+          }
 
-                    .input-table th,
-                    .summary-table th {
-                        background: #F1F3EF;
-                        font-weight: 700;
-                    }
+          .brand-subtitle {
+            margin: 2px 0 0;
+            color: #748078;
+            font-size: 10px;
+          }
 
-                    .input-table td.number,
-                    .summary-table td.number {
-                        text-align: right;
-                    }
+          .report-label {
+            text-align: right;
+            color: #6E786F;
+            font-size: 9px;
+            font-weight: 700;
+            letter-spacing: 1.2px;
+            text-transform: uppercase;
+          }
 
-                    .worker {
-                        border: 1px solid #D8D8D8;
-                        border-radius: 10px;
-                        padding: 18px;
-                        margin-bottom: 20px;
-                        page-break-inside: avoid;
-                    }
+          .report-title {
+            margin: 20px 0 3px;
+            font-size: 25px;
+            line-height: 1.15;
+            color: #1F3025;
+            font-weight: 800;
+          }
 
-                    .worker-header {
-                        display: flex;
-                        justify-content: space-between;
-                        align-items: center;
-                        border-bottom: 1px solid #DDD;
-                        padding-bottom: 10px;
-                        margin-bottom: 14px;
-                    }
+          .report-name {
+            margin: 0;
+            color: #5E6A61;
+            font-size: 13px;
+          }
 
-                    .worker-header h3 {
-                        margin: 0;
-                        font-size: 18px;
-                    }
+          .meta-row {
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+            margin-top: 14px;
+            color: #667169;
+            font-size: 10px;
+          }
 
-                    .worker-header .kahon {
-                        font-size: 13px;
-                        color: #666;
-                    }
+          .meta-item strong {
+            color: #29362D;
+          }
 
-                    .calculation-step {
-                        margin: 10px 0;
-                        padding: 8px 10px;
-                        background: #FAFAFA;
-                        border-radius: 5px;
-                    }
+          /* =========================
+             SUMMARY
+          ========================= */
 
-                    .calculation-step strong {
-                        display: block;
-                        margin-bottom: 2px;
-                    }
+          .summary-box {
+            border: 1px solid #DCE5DD;
+            border-radius: 10px;
+            overflow: hidden;
+            margin-bottom: 20px;
+          }
 
-                    .result-highlight {
-                        background: #F5F7F2;
-                        border-left: 3px solid #2F6B3F;
-                        padding: 10px 12px;
-                        margin-top: 12px;
-                    }
+          .summary-header {
+            background: #F3F7F2;
+            padding: 10px 14px;
+            border-bottom: 1px solid #DCE5DD;
+          }
 
-                    .summary-section {
-                        margin-top: 30px;
-                        page-break-before: always;
-                        break-before: page;
-                        page-break-inside: avoid;
-                        break-inside: avoid;
-                    }
+          .summary-header h2 {
+            margin: 0;
+            font-size: 13px;
+            color: #244D30;
+          }
 
-                    .summary-table .total-row {
-                        font-weight: 700;
-                        background: #F5F7F2;
-                    }
+          .summary-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+          }
 
-                    .summary-subtitle {
-                        font-size: 16px;
-                        margin-top: 20px;
-                        margin-bottom: 10px;
-                    }
+          .summary-item {
+            padding: 12px 14px;
+            border-right: 1px solid #E3E8E3;
+          }
 
-                    .tenant-row {
-                        font-weight: 700;
-                        font-size: 16px;
-                        background: #F5F7F2;
-                    }
+          .summary-item:last-child {
+            border-right: none;
+          }
 
-                    .signature-section {
-                        display: grid;
-                        grid-template-columns: 1fr 1fr;
-                        gap: 50px;
-                        margin-top: 60px;
-                        page-break-inside: avoid;
-                    }
+          .summary-label {
+            display: block;
+            color: #7A837C;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 3px;
+          }
 
-                    .signature-line {
-                        border-top: 1px solid #333;
-                        padding-top: 6px;
-                        text-align: center;
-                        color: #555;
-                    }
+          .summary-value {
+            display: block;
+            color: #26372C;
+            font-size: 15px;
+            font-weight: 800;
+          }
 
-                    .footer {
-                        margin-top: 40px;
-                        padding-top: 12px;
-                        border-top: 1px solid #DDD;
-                        text-align: center;
-                        color: #777;
-                        font-size: 11px;
-                    }
+          .summary-subvalue {
+            display: block;
+            color: #7A837C;
+            font-size: 9px;
+            margin-top: 1px;
+          }
 
-                    @media print {
-                        body {
-                            padding: 20px;
-                        }
+          /* =========================
+             FARM UNIT
+          ========================= */
 
-                        .worker {
-                            break-inside: avoid;
-                        }
+          .unit-box {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
 
-                        .summary-section,
-                        .signature-section {
-                            break-inside: avoid;
-                        }
-                    }
+            background: #F8FAF7;
+            border: 1px solid #E1E8E1;
+            border-left: 4px solid #2F6B3F;
 
-                    @media (max-width: 600px) {
-                        body {
-                            padding: 20px;
-                        }
+            border-radius: 7px;
+            padding: 10px 13px;
+            margin-bottom: 24px;
+          }
 
-                        .info-grid,
-                        .signature-section {
-                            grid-template-columns: 1fr;
-                        }
-                    }
-                </style>
-        </head>
+          .unit-label {
+            color: #6E786F;
+            font-size: 10px;
+          }
 
-        <body>
-            <h1>${calculationTitle}</h1>
+          .unit-value {
+            color: #244D30;
+            font-weight: 800;
+            font-size: 12px;
+          }
 
-            <div class="date">
-                ${calculationDate.toLocaleString()}
+          /* =========================
+             WORKER CARD
+          ========================= */
+
+          .worker-card {
+            border: 1px solid #D9E0DA;
+            border-radius: 10px;
+            margin-bottom: 18px;
+            overflow: hidden;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+
+          .worker-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 15px;
+
+            background: #F5F8F4;
+            padding: 13px 15px;
+
+            border-bottom: 1px solid #DCE4DD;
+          }
+
+          .worker-number {
+            color: #6C786F;
+            font-size: 8px;
+            font-weight: 800;
+            letter-spacing: 1px;
+            margin-bottom: 2px;
+          }
+
+          .worker-header h2 {
+            margin: 0;
+            color: #244D30;
+            font-size: 17px;
+            line-height: 1.2;
+          }
+
+          .worker-kahon {
+            min-width: 65px;
+            text-align: center;
+            padding: 6px 9px;
+            background: #FFFFFF;
+            border: 1px solid #D7E0D8;
+            border-radius: 7px;
+          }
+
+          .worker-kahon span {
+            display: block;
+            color: #7A837C;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .worker-kahon strong {
+            display: block;
+            color: #2F6B3F;
+            font-size: 15px;
+          }
+
+          /* =========================
+             INPUTS
+          ========================= */
+
+          .worker-inputs {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            border-bottom: 1px solid #E4E8E4;
+          }
+
+          .input-item {
+            padding: 11px 15px;
+          }
+
+          .input-item + .input-item {
+            border-left: 1px solid #E4E8E4;
+          }
+
+          .input-label {
+            display: block;
+            color: #7A837C;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 2px;
+          }
+
+          .input-item strong {
+            display: block;
+            color: #26372C;
+            font-size: 13px;
+          }
+
+          .input-item small {
+            color: #879088;
+            font-size: 9px;
+          }
+
+          /* =========================
+             CALCULATIONS
+          ========================= */
+
+          .calculation-heading {
+            padding: 10px 15px 7px;
+            color: #58645B;
+            font-size: 9px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 0.8px;
+          }
+
+          .calculation-table {
+            padding: 0 15px 10px;
+          }
+
+          .calc-row {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            gap: 15px;
+
+            padding: 7px 8px;
+            border-bottom: 1px solid #EEF1EE;
+          }
+
+          .calc-row:last-child {
+            border-bottom: none;
+          }
+
+          .calc-label {
+            min-width: 0;
+          }
+
+          .calc-label strong {
+            display: block;
+            color: #354239;
+            font-size: 10px;
+          }
+
+          .calc-label span {
+            display: block;
+            color: #89928B;
+            font-size: 9px;
+          }
+
+          .calc-value {
+            flex-shrink: 0;
+            color: #2D3D32;
+            font-size: 10px;
+            font-weight: 700;
+            text-align: right;
+          }
+
+          .muted-row {
+            background: #FAFBFA;
+          }
+
+          .muted-row .calc-label span {
+            color: #788279;
+            font-size: 9px;
+          }
+
+          .muted-row .calc-value {
+            color: #6D786F;
+            font-weight: 600;
+          }
+
+          .final-row {
+            margin-top: 5px;
+            padding: 9px 10px;
+            background: #F0F6F0;
+            border: 1px solid #D6E5D7;
+            border-radius: 7px;
+          }
+
+          .final-row .calc-label strong {
+            color: #245331;
+            font-size: 11px;
+          }
+
+          .final-row .calc-value {
+            color: #245331;
+            font-size: 12px;
+          }
+
+          /* =========================
+             WORKER TOTAL
+          ========================= */
+
+          .worker-total {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            gap: 25px;
+
+            margin: 0 15px 15px;
+            padding: 10px 12px;
+
+            background: #FAFBFA;
+            border: 1px solid #E1E7E1;
+            border-radius: 7px;
+          }
+
+          .worker-total > div:not(.worker-total-divider) {
+            text-align: center;
+          }
+
+          .worker-total span {
+            display: block;
+            color: #7A837C;
+            font-size: 8px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+          }
+
+          .worker-total strong {
+            display: block;
+            color: #2F6B3F;
+            font-size: 12px;
+            margin-top: 2px;
+          }
+
+          .worker-total-divider {
+            width: 1px;
+            height: 25px;
+            background: #DCE3DD;
+          }
+
+          /* =========================
+             COMPLETE SUMMARY
+          ========================= */
+
+          .summary-section {
+            margin-top: 28px;
+            page-break-before: always;
+            break-before: page;
+            page-break-inside: avoid;
+          }
+
+          .section-heading {
+            margin: 0 0 4px;
+            color: #213229;
+            font-size: 20px;
+          }
+
+          .section-description {
+            margin: 0 0 15px;
+            color: #788279;
+            font-size: 10px;
+          }
+
+          .summary-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 20px;
+          }
+
+          .summary-table th {
+            background: #2F6B3F;
+            color: #FFFFFF;
+            padding: 9px 10px;
+            font-size: 9px;
+            text-transform: uppercase;
+            letter-spacing: 0.4px;
+            text-align: left;
+          }
+
+          .summary-table td {
+            padding: 8px 10px;
+            border-bottom: 1px solid #E2E7E3;
+            color: #39453D;
+            font-size: 10px;
+          }
+
+          .summary-table td.number {
+            text-align: right;
+            font-weight: 700;
+          }
+
+          .summary-table tr:nth-child(even) td {
+            background: #FAFBFA;
+          }
+
+          .summary-table .tenant-row td {
+            background: #EEF6EF;
+            color: #245331;
+            font-weight: 800;
+            font-size: 11px;
+            border-top: 2px solid #C9DDCB;
+          }
+
+          .summary-note {
+            padding: 10px 12px;
+            background: #F8FAF7;
+            border: 1px solid #E1E8E1;
+            border-radius: 7px;
+            color: #68736B;
+            font-size: 9px;
+            line-height: 1.5;
+          }
+
+          .summary-note strong {
+            color: #36463B;
+          }
+
+          /* =========================
+             SIGNATURES
+          ========================= */
+
+          .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 60px;
+            margin-top: 55px;
+            page-break-inside: avoid;
+            break-inside: avoid;
+          }
+
+          .signature {
+            text-align: center;
+          }
+
+          .signature-line {
+            border-top: 1px solid #69736C;
+            margin-bottom: 6px;
+          }
+
+          .signature-name {
+            color: #354239;
+            font-size: 10px;
+            font-weight: 700;
+          }
+
+          .signature-role {
+            color: #879088;
+            font-size: 9px;
+          }
+
+          /* =========================
+             FOOTER
+          ========================= */
+
+          .footer {
+            margin-top: 35px;
+            padding-top: 10px;
+            border-top: 1px solid #E0E5E1;
+            display: flex;
+            justify-content: space-between;
+            gap: 20px;
+
+            color: #8A928C;
+            font-size: 8px;
+          }
+
+          /* =========================
+             PRINT
+          ========================= */
+
+          @media print {
+            body {
+              background: #FFFFFF;
+            }
+
+            .report {
+              max-width: none;
+            }
+
+            .worker-card {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+
+            .summary-section {
+              page-break-before: always;
+              break-before: page;
+            }
+
+            .signature-section {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+
+            .summary-table {
+              page-break-inside: avoid;
+              break-inside: avoid;
+            }
+          }
+
+          /* =========================
+             SMALL SCREEN / PREVIEW
+          ========================= */
+
+          @media (max-width: 600px) {
+            body {
+              font-size: 11px;
+            }
+
+            .brand-row,
+            .meta-row {
+              flex-direction: column;
+              align-items: flex-start;
+            }
+
+            .report-label {
+              text-align: left;
+            }
+
+            .summary-grid {
+              grid-template-columns: 1fr;
+            }
+
+            .summary-item {
+              border-right: none;
+              border-bottom: 1px solid #E3E8E3;
+            }
+
+            .summary-item:last-child {
+              border-bottom: none;
+            }
+
+            .worker-inputs {
+              grid-template-columns: 1fr;
+            }
+
+            .input-item + .input-item {
+              border-left: none;
+              border-top: 1px solid #E4E8E4;
+            }
+
+            .signature-section {
+              grid-template-columns: 1fr;
+              gap: 40px;
+            }
+          }
+        </style>
+      </head>
+
+      <body>
+        <main class="report">
+
+          <!-- HEADER -->
+          <header class="report-header">
+
+            <div class="brand-row">
+
+              <div class="brand">
+                <div class="brand-mark">
+                  <img
+                    src="${iconUri}"
+                    alt="Loberanes Farm Calculator"
+                  />
+                </div>
+
+                <div>
+                  <p class="brand-name">
+                    Loberanes Farm Calculator
+                  </p>
+
+                  <p class="brand-subtitle">
+                    Farm Harvest Share Record
+                  </p>
+                </div>
+              </div>
+
+              <div class="report-label">
+                Official Calculation Report
+              </div>
+
             </div>
 
-            <div class="unit">
-                <strong>Farm Unit:</strong>
-                4 taro = 1 sack
+            <h1 class="report-title">
+              Farm Share Report
+            </h1>
+
+            <p class="report-name">
+              ${safeTitle}
+            </p>
+
+            <div class="meta-row">
+              <div class="meta-item">
+                <strong>Date:</strong>
+                ${formattedDate}
+              </div>
+
+              <div class="meta-item">
+                <strong>Mananomay:</strong>
+                ${results.length}
+              </div>
+
+              <div class="meta-item">
+                <strong>Total Harvest:</strong>
+                ${formatTaro(totalGross)}
+              </div>
             </div>
 
-            ${workerSections}
+          </header>
 
-            <section class="summary-section">
-                <h2>Complete Calculation Summary</h2>
+          <!-- QUICK SUMMARY -->
+          <section class="summary-box">
 
-                <h3 class="summary-subtitle">Summary in Taro</h3>
+            <div class="summary-header">
+              <h2>Harvest Overview</h2>
+            </div>
 
-                <table class="summary-table">
-                    <thead>
-                        <tr>
-                            <th>Category</th>
-                            <th>Amount (Taro)</th>
-                        </tr>
-                    </thead>
+            <div class="summary-grid">
 
-                    <tbody>
-                        <tr>
-                            <td>Total Harvest</td>
-                            <td class="number">${totalGross}</td>
-                        </tr>
+              <div class="summary-item">
+                <span class="summary-label">
+                  Total Harvest
+                </span>
 
-                        <tr>
-                            <td>Total Harvester Share</td>
-                            <td class="number">${totalHarvester}</td>
-                        </tr>
+                <span class="summary-value">
+                  ${formatTaro(totalGross)}
+                </span>
 
-                        <tr>
-                            <td>Total Kahon Share</td>
-                            <td class="number">${totalKahon}</td>
-                        </tr>
+                <span class="summary-subvalue">
+                  ${totalGross} taro
+                </span>
+              </div>
 
-                        <tr>
-                            <td>Total Harvest Share</td>
-                            <td class="number">${totalHarvestShare}</td>
-                        </tr>
+              <div class="summary-item">
+                <span class="summary-label">
+                  Total Owner Share
+                </span>
 
-                        <tr>
-                            <td>Total Mananomay Share</td>
-                            <td class="number">${totalMananomayShare}</td>
-                        </tr>
+                <span class="summary-value">
+                  ${formatTaro(totalOwner)}
+                </span>
 
-                        <tr>
-                            <td>Total Owner Share</td>
-                            <td class="number">${totalOwner}</td>
-                        </tr>
+                <span class="summary-subvalue">
+                  ${totalOwner} taro
+                </span>
+              </div>
 
-                        <tr class="tenant-row">
-                            <td>Total Tenant Share</td>
-                            <td class="number">${totalTenant}</td>
-                        </tr>
-                    </tbody>
-                </table>
+              <div class="summary-item">
+                <span class="summary-label">
+                  Total Tenant Share
+                </span>
 
-                <h3 class="summary-subtitle">Summary in Sacks + Taro</h3>
+                <span class="summary-value">
+                  ${formatTaro(totalTenant)}
+                </span>
 
-                <table class="summary-table">
-                    <thead>
-                        <tr>
-                            <th>Category</th>
-                            <th>Amount</th>
-                        </tr>
-                    </thead>
+                <span class="summary-subvalue">
+                  ${totalTenant} taro
+                </span>
+              </div>
 
-                    <tbody>
-                        <tr>
-                            <td>Total Harvest</td>
-                            <td class="number">${formatTaro(totalGross)}</td>
-                        </tr>
+            </div>
 
-                        <tr>
-                            <td>Total Harvester Share</td>
-                            <td class="number">${formatTaro(totalHarvester)}</td>
-                        </tr>
+          </section>
 
-                        <tr>
-                            <td>Total Kahon Share</td>
-                            <td class="number">${formatTaro(totalKahon)}</td>
-                        </tr>
+          <!-- FARM UNIT -->
+          <div class="unit-box">
 
-                        <tr>
-                            <td>Total Harvest Share</td>
-                            <td class="number">${formatTaro(totalHarvestShare)}</td>
-                        </tr>
+            <span class="unit-label">
+              Farm Unit
+            </span>
 
-                        <tr>
-                            <td>Total Mananomay Share</td>
-                            <td class="number">${formatTaro(totalMananomayShare)}</td>
-                        </tr>
+            <span class="unit-value">
+              4 taro = 1 sack
+            </span>
 
-                        <tr>
-                            <td>Total Owner Share</td>
-                            <td class="number">${formatTaro(totalOwner)}</td>
-                        </tr>
+          </div>
 
-                        <tr class="tenant-row">
-                            <td>Total Tenant Share</td>
-                            <td class="number">${formatTaro(totalTenant)}</td>
-                        </tr>
-                    </tbody>
-                </table>
-            </section>
-        </body>
-        </html>
-    `;
+          <!-- WORKER DETAILS -->
+          ${workerSections}
+
+          <!-- COMPLETE SUMMARY -->
+          <section class="summary-section">
+
+            <h2 class="section-heading">
+              Complete Calculation Summary
+            </h2>
+
+            <p class="section-description">
+              Final distribution of the total harvest based on the
+              farm calculation rules.
+            </p>
+
+            <table class="summary-table">
+
+              <thead>
+                <tr>
+                  <th>Category</th>
+                  <th style="text-align: right;">
+                    Amount (Taro)
+                  </th>
+                  <th style="text-align: right;">
+                    Sacks + Taro
+                  </th>
+                </tr>
+              </thead>
+
+              <tbody>
+
+                <tr>
+                  <td>Total Harvest</td>
+                  <td class="number">
+                    ${totalGross}
+                  </td>
+                  <td class="number">
+                    ${formatTaro(totalGross)}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Total Harvester Share</td>
+                  <td class="number">
+                    ${totalHarvester}
+                  </td>
+                  <td class="number">
+                    ${formatTaro(totalHarvester)}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Total Kahon Share</td>
+                  <td class="number">
+                    ${totalKahon}
+                  </td>
+                  <td class="number">
+                    ${formatTaro(totalKahon)}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Total Harvest Share</td>
+                  <td class="number">
+                    ${totalHarvestShare}
+                  </td>
+                  <td class="number">
+                    ${formatTaro(totalHarvestShare)}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Total Mananomay Share</td>
+                  <td class="number">
+                    ${totalMananomayShare}
+                  </td>
+                  <td class="number">
+                    ${formatTaro(totalMananomayShare)}
+                  </td>
+                </tr>
+
+                <tr>
+                  <td>Total Owner Share</td>
+                  <td class="number">
+                    ${totalOwner}
+                  </td>
+                  <td class="number">
+                    ${formatTaro(totalOwner)}
+                  </td>
+                </tr>
+
+                <tr class="tenant-row">
+                  <td>Total Tenant Share</td>
+                  <td class="number">
+                    ${totalTenant}
+                  </td>
+                  <td class="number">
+                    ${formatTaro(totalTenant)}
+                  </td>
+                </tr>
+
+              </tbody>
+
+            </table>
+
+            <div class="summary-note">
+              <strong>Note:</strong>
+              All shares are calculated in taro according to the
+              configured farm sharing rules. Displayed sack values
+              use the standard conversion of 4 taro = 1 sack.
+            </div>
+
+            <!-- SIGNATURES -->
+            <div class="signature-section">
+
+              <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-name">
+                  Tenant / Financer
+                </div>
+                <div class="signature-role">
+                  Signature
+                </div>
+              </div>
+
+              <div class="signature">
+                <div class="signature-line"></div>
+                <div class="signature-name">
+                  Owner
+                </div>
+                <div class="signature-role">
+                  Signature
+                </div>
+              </div>
+
+            </div>
+
+          </section>
+
+          <!-- FOOTER -->
+          <footer class="footer">
+
+            <span>
+              Loberanes Farm Calculator
+            </span>
+
+            <span>
+              Generated ${formattedDate}
+            </span>
+
+          </footer>
+
+        </main>
+      </body>
+    </html>
+  `;
 
     if (Platform.OS === "web") {
       const printWindow = window.open("", "_blank");
@@ -755,7 +1427,12 @@ export default function ResultsScreen() {
       printWindow.document.write(html);
       printWindow.document.close();
       printWindow.focus();
-      printWindow.print();
+
+      // Give the browser a moment to finish rendering
+      // before opening the print dialog.
+      setTimeout(() => {
+        printWindow.print();
+      }, 300);
     } else {
       try {
         await Print.printAsync({
