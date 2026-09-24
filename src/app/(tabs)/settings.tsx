@@ -2,19 +2,19 @@ import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
-    Alert,
-    Platform,
-    Pressable,
-    ScrollView,
-    StyleSheet,
-    Text,
-    View,
+  Alert,
+  Platform,
+  Pressable,
+  ScrollView,
+  StyleSheet,
+  Text,
+  View,
 } from "react-native";
 
 import {
-    getRetentionPeriod,
-    RetentionPeriod,
-    setRetentionPeriod,
+  getRetentionPeriod,
+  RetentionPeriod,
+  setRetentionPeriod,
 } from "../../utils/storage";
 
 export default function SettingsScreen() {
@@ -256,7 +256,7 @@ export default function SettingsScreen() {
 
           <View style={styles.versionRow}>
             <Text style={styles.versionLabel}>Version</Text>
-            <Text style={styles.versionText}>1.0.0</Text>
+            <Text style={styles.versionText}>2.1.1</Text>
           </View>
         </View>
 

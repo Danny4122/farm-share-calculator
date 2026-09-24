@@ -1,5 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
-import { Asset } from "expo-asset";
+import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
 import { useEffect, useRef, useState } from "react";
@@ -458,11 +458,17 @@ export default function ResultsScreen() {
       })
       .join("");
 
-    const iconAsset = Asset.fromModule(require("../../assets/images/icon.png"));
+    const iconUri = FileSystem.bundleDirectory
+      ? `${FileSystem.bundleDirectory}assets/images/icon.png`
+      : null;
 
-    await iconAsset.downloadAsync();
+    let iconBase64 = "";
 
-    const iconUri = iconAsset.localUri || iconAsset.uri;
+    if (iconUri) {
+      iconBase64 = await FileSystem.readAsStringAsync(iconUri, {
+        encoding: FileSystem.EncodingType.Base64,
+      });
+    }
 
     const html = `
     <!DOCTYPE html>
@@ -1674,7 +1680,6 @@ export default function ResultsScreen() {
               </View>
 
               {/* Total Mananomay Share */}
-              {/* Total Mananomay Share */}
               <View style={styles.totalShareBox}>
                 <Pressable
                   style={styles.totalShareButton}
@@ -1683,7 +1688,7 @@ export default function ResultsScreen() {
                   }
                 >
                   <View style={styles.totalShareTextContainer}>
-                    <View>
+                    <View style={styles.totalShareLeft}>
                       <Text style={styles.totalShareLabel}>
                         Total Mananomay Share
                       </Text>
@@ -1740,7 +1745,7 @@ export default function ResultsScreen() {
 
               {/* Total Tenant */}
               <View style={styles.totalTenantBox}>
-                <View>
+                <View style={styles.totalTenantLeft}>
                   <Text style={styles.totalTenantLabel}>
                     Total Tenant Share
                   </Text>
@@ -2231,7 +2236,7 @@ const styles = StyleSheet.create({
   },
 
   totalTenantLabel: {
-    fontSize: 17,
+    fontSize: 15,
     fontWeight: "800",
     color: "#2F6B3F",
   },
@@ -2242,13 +2247,19 @@ const styles = StyleSheet.create({
     marginTop: 3,
   },
 
+  totalTenantLeft: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 12,
+  },
+
   totalTenantRight: {
     alignItems: "flex-end",
-    marginLeft: 12,
+    marginLeft: 0,
   },
 
   totalTenantValue: {
-    fontSize: 18,
+    fontSize: 14,
     fontWeight: "800",
     color: "#2F6B3F",
     textAlign: "right",
@@ -2267,7 +2278,7 @@ const styles = StyleSheet.create({
   totalCard: {
     backgroundColor: "#FFFFFF",
     borderRadius: 18,
-    padding: 20,
+    padding: 16,
     marginTop: 4,
     marginBottom: 18,
     borderWidth: 1.5,
@@ -2312,7 +2323,7 @@ const styles = StyleSheet.create({
   },
 
   totalShareLabel: {
-    fontSize: 15,
+    fontSize: 12,
     fontWeight: "800",
     color: "#2F6B3F",
   },
@@ -2323,14 +2334,20 @@ const styles = StyleSheet.create({
     marginTop: 2,
   },
 
+  totalShareLeft: {
+    flex: 1,
+    minWidth: 0,
+    marginRight: 10,
+  },
+
   totalShareRight: {
     flexDirection: "row",
     alignItems: "center",
-    marginLeft: 10,
+    marginLeft: 0,
   },
 
   totalShareValue: {
-    fontSize: 15,
+    fontSize: 14,
     fontWeight: "800",
     color: "#2F6B3F",
   },
