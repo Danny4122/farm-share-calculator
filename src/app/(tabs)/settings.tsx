@@ -1,4 +1,5 @@
 import { Ionicons, MaterialCommunityIcons } from "@expo/vector-icons";
+import Constants from "expo-constants";
 import { router } from "expo-router";
 import { useEffect, useState } from "react";
 import {
@@ -256,7 +257,9 @@ export default function SettingsScreen() {
 
           <View style={styles.versionRow}>
             <Text style={styles.versionLabel}>Version</Text>
-            <Text style={styles.versionText}>2.1.1</Text>
+            <Text style={styles.versionText}>
+              v{Constants.expoConfig?.version ?? "Unknown"}
+            </Text>
           </View>
         </View>
 
