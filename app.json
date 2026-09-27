@@ -2,7 +2,7 @@
   "expo": {
     "name": "Loberanes Farm Calculator",
     "slug": "farmCalculator",
-    "version": "2.1.1",
+    "version": "2.2.0",
     "orientation": "portrait",
     "icon": "./assets/images/Icon-transparent.png",
     "scheme": "farmcalculator",
