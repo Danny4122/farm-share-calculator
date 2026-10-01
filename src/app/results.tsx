@@ -1,4 +1,5 @@
 import { MaterialCommunityIcons } from "@expo/vector-icons";
+import { Asset } from "expo-asset";
 import * as FileSystem from "expo-file-system/legacy";
 import * as Print from "expo-print";
 import { router, useLocalSearchParams } from "expo-router";
@@ -458,17 +459,15 @@ export default function ResultsScreen() {
       })
       .join("");
 
-    const iconUri = FileSystem.bundleDirectory
-      ? `${FileSystem.bundleDirectory}assets/images/icon.png`
-      : null;
+    const iconAsset = Asset.fromModule(require("../../assets/images/Icon.png"));
 
-    let iconBase64 = "";
+    await iconAsset.downloadAsync();
 
-    if (iconUri) {
-      iconBase64 = await FileSystem.readAsStringAsync(iconUri, {
-        encoding: FileSystem.EncodingType.Base64,
-      });
-    }
+    const iconBase64 = await FileSystem.readAsStringAsync(iconAsset.localUri!, {
+      encoding: FileSystem.EncodingType.Base64,
+    });
+
+    const iconSrc = `data:image/png;base64,${iconBase64}`;
 
     const html = `
     <!DOCTYPE html>
@@ -1148,7 +1147,7 @@ export default function ResultsScreen() {
               <div class="brand">
                 <div class="brand-mark">
                   <img
-                    src="${iconUri}"
+                    src="${iconSrc}"
                     alt="Loberanes Farm Calculator"
                   />
                 </div>

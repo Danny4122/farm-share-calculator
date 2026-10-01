@@ -45,7 +45,7 @@ export const calculateIndividualShare = (
 ): MananomayResult => {
     // 1. Harvester gets 1 taro for every 15 taro
     const harvesterShare = roundFarmShare(
-        person.harvestTaro / 15
+        person.harvestTaro / 14
     );
 
     // 2. Mananomay gets 2 taro per kahon
